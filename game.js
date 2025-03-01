@@ -4,6 +4,15 @@ const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerH
 camera.position.set(0, 10, 20);
 camera.lookAt(0, 0, 0);
 
+// Notification Popups
+function showNotification(message, duration = 2000) {
+    saveNotification.textContent = message;
+    saveNotification.style.opacity = '1';
+    setTimeout(() => {
+        saveNotification.style.opacity = '0';
+    }, duration);
+}
+
 // Undo history stack
 const undoStack = [];
 const MAX_UNDO_HISTORY = 50; // Maximum number of actions to remember
@@ -23,11 +32,7 @@ function undoLastAction() {
     if (undoStack.length === 0) {
         console.log('Nothing to undo');
         // Show notification
-        saveNotification.textContent = 'Nothing to undo';
-        saveNotification.style.opacity = '1';
-        setTimeout(() => {
-            saveNotification.style.opacity = '0';
-        }, 2000);
+        showNotification('Nothing to undo');
         return;
     }
     
@@ -68,11 +73,7 @@ function undoLastAction() {
     }
     
     // Show notification
-    saveNotification.textContent = 'Action undone';
-    saveNotification.style.opacity = '1';
-    setTimeout(() => {
-        saveNotification.style.opacity = '0';
-    }, 2000);
+    showNotification('Action Undone');
 }
 
 const renderer = new THREE.WebGLRenderer();
@@ -209,11 +210,7 @@ function populateSavedCitiesList() {
                 populateSavedCitiesList();
                 
                 // Show notification
-                saveNotification.textContent = 'City deleted successfully';
-                saveNotification.style.opacity = '1';
-                setTimeout(() => {
-                    saveNotification.style.opacity = '0';
-                }, 2000);
+                showNotification('City deleted successfully');
             }
         };
         buttonsContainer.appendChild(deleteBtn);
@@ -275,13 +272,7 @@ function saveGameState() {
     localStorage.setItem('simcity_autosave_id', saveId);
     
     // Show save notification
-    saveNotification.textContent = `City saved: ${new Date().toLocaleTimeString()}`;
-    saveNotification.style.opacity = '1';
-    
-    // Hide notification after 2 seconds
-    setTimeout(() => {
-        saveNotification.style.opacity = '0';
-    }, 2000);
+    showNotification(`City saved: ${new Date().toLocaleTimeString()}`);
     
     console.log('Game state saved with ID:', saveId);
 }
@@ -294,11 +285,7 @@ function loadGameState(saveId) {
     
     if (!savedData) {
         console.log('No saved game found');
-        saveNotification.textContent = 'No saved game found';
-        saveNotification.style.opacity = '1';
-        setTimeout(() => {
-            saveNotification.style.opacity = '0';
-        }, 2000);
+        showNotification('No saved game found');
         return false;
     }
     
@@ -343,22 +330,14 @@ function loadGameState(saveId) {
         console.log(`Game loaded successfully from ${data.timestamp}`);
         
         // Show load notification
-        saveNotification.textContent = 'City loaded successfully';
-        saveNotification.style.opacity = '1';
-        setTimeout(() => {
-            saveNotification.style.opacity = '0';
-        }, 2000);
-        
+        showNotification('City loaded successfully');
+    
         return true;
     } catch (error) {
         console.error('Error loading game state:', error);
         
         // Show error notification
-        saveNotification.textContent = 'Error loading city: ' + error.message;
-        saveNotification.style.opacity = '1';
-        setTimeout(() => {
-            saveNotification.style.opacity = '0';
-        }, 3000);
+        showNotification('Error loading city');
         
         return false;
     }
@@ -393,12 +372,7 @@ function createNewCity() {
     document.getElementById('population-display').textContent = `Population: ${Math.floor(population)}`;
     
     // Show notification
-    saveNotification.textContent = 'Started a new city';
-    saveNotification.style.opacity = '1';
-    setTimeout(() => {
-        saveNotification.style.opacity = '0';
-    }, 2000);
-    
+    showNotification('Started a new city');    
     console.log('Created new city');
 }
 
