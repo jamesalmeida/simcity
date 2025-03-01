@@ -81,7 +81,7 @@ document.getElementById('game-container').appendChild(renderer.domElement);
 
 // Ground plane
 const groundGeometry = new THREE.PlaneGeometry(100, 100);
-const groundMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+const groundMaterial = new THREE.MeshBasicMaterial({ color: 0x008200 });
 const ground = new THREE.Mesh(groundGeometry, groundMaterial);
 ground.rotation.x = -Math.PI / 2;
 scene.add(ground);
