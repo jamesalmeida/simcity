@@ -4,6 +4,77 @@ const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerH
 camera.position.set(0, 10, 20);
 camera.lookAt(0, 0, 0);
 
+// Undo history stack
+const undoStack = [];
+const MAX_UNDO_HISTORY = 50; // Maximum number of actions to remember
+
+// Function to add an action to the undo stack
+function addToUndoStack(action) {
+    undoStack.push(action);
+    // Limit the size of the undo stack to prevent memory issues
+    if (undoStack.length > MAX_UNDO_HISTORY) {
+        undoStack.shift(); // Remove oldest item
+    }
+    console.log(`Added to undo stack. Stack size: ${undoStack.length}`);
+}
+
+// Function to undo the last action
+function undoLastAction() {
+    if (undoStack.length === 0) {
+        console.log('Nothing to undo');
+        // Show notification
+        saveNotification.textContent = 'Nothing to undo';
+        saveNotification.style.opacity = '1';
+        setTimeout(() => {
+            saveNotification.style.opacity = '0';
+        }, 2000);
+        return;
+    }
+    
+    const lastAction = undoStack.pop();
+    console.log('Undoing action:', lastAction.type);
+    
+    switch (lastAction.type) {
+        case 'place_building':
+            // Remove the building that was placed
+            bulldoze(lastAction.x, lastAction.z, true); // Pass true to not add this to the undo stack
+            break;
+            
+        case 'place_road':
+            // Remove the road that was placed
+            bulldoze(lastAction.x, lastAction.z, true); // Pass true to not add this to the undo stack
+            break;
+            
+        case 'bulldoze':
+            // Restore what was bulldozed
+            if (lastAction.objectType === 'building') {
+                placeBuilding(lastAction.buildingType, lastAction.x, lastAction.z, lastAction.rotation, true);
+            } else if (lastAction.objectType === 'road') {
+                // Need to restore the road
+                const roadKey = `${lastAction.x}_${lastAction.z}`;
+                const roadType = lastAction.roadType;
+                
+                // Create the road group
+                const roadGroup = createRoadGroup(roadType);
+                roadGroup.position.set(lastAction.x + 0.5, 0.005, lastAction.z + 0.5);
+                
+                scene.add(roadGroup);
+                roadGrid.set(roadKey, { mesh: roadGroup, roadType });
+                
+                // Update adjacent roads
+                updateAdjacentRoads(lastAction.x, lastAction.z);
+            }
+            break;
+    }
+    
+    // Show notification
+    saveNotification.textContent = 'Action undone';
+    saveNotification.style.opacity = '1';
+    setTimeout(() => {
+        saveNotification.style.opacity = '0';
+    }, 2000);
+}
+
 const renderer = new THREE.WebGLRenderer();
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.getElementById('game-container').appendChild(renderer.domElement);
@@ -557,6 +628,13 @@ document.getElementById('bulldozer-btn').addEventListener('click', () => {
 window.addEventListener('keydown', (event) => {
     const key = event.key.toLowerCase();
     
+    // Handle undo with Command+Z (Mac) or Ctrl+Z (Windows)
+    if ((event.metaKey || event.ctrlKey) && key === 'z') {
+        event.preventDefault(); // Prevent browser's default undo
+        undoLastAction();
+        return;
+    }
+    
     // Handle selection keys
     if (key === 'h') {
         // Residential buildings
@@ -699,13 +777,25 @@ function detectRoadConnections(x, z) {
 }
 
 // Function to remove buildings or roads at a location
-function bulldoze(x, z) {
+function bulldoze(x, z, skipUndoStack = false) {
     const key = `${x}_${z}`;
     
     // Check for and remove buildings
     if (cityGrid.has(key)) {
         const building = cityGrid.get(key);
         scene.remove(building);
+        
+        // Add to undo stack before removing
+        if (!skipUndoStack) {
+            addToUndoStack({
+                type: 'bulldoze',
+                objectType: 'building',
+                buildingType: building.type,
+                x,
+                z,
+                rotation: building.rotation
+            });
+        }
         
         // Update counters
         if (building.type === 'residential') numResidential--;
@@ -723,6 +813,18 @@ function bulldoze(x, z) {
     // Check for and remove roads
     if (roadGrid.has(key)) {
         const roadInfo = roadGrid.get(key);
+        
+        // Add to undo stack before removing
+        if (!skipUndoStack) {
+            addToUndoStack({
+                type: 'bulldoze',
+                objectType: 'road',
+                roadType: roadInfo.roadType,
+                x,
+                z
+            });
+        }
+        
         scene.remove(roadInfo.mesh);
         roadGrid.delete(key);
         console.log(`Bulldozed road at ${x}, ${z}`);
@@ -1290,7 +1392,7 @@ function createRoadGroup(roadType) {
 }
 
 // Place a road
-function placeRoad(x, z) {
+function placeRoad(x, z, skipUndoStack = false) {
     if (x < -49 || x >= 49 || z < -49 || z >= 49) {
         console.log('Out of bounds');
         return;
@@ -1304,6 +1406,15 @@ function placeRoad(x, z) {
     
     // Detect the appropriate road type based on adjacent roads
     const roadType = detectRoadConnections(x, z);
+    
+    // Add to undo stack before placing
+    if (!skipUndoStack) {
+        addToUndoStack({
+            type: 'place_road',
+            x,
+            z
+        });
+    }
     
     // Create the road group
     const roadGroup = createRoadGroup(roadType);
@@ -1650,7 +1761,7 @@ for (const type in RoadType) {
 }
 
 // Function to place buildings
-function placeBuilding(type, x, z, forcedRotation) {
+function placeBuilding(type, x, z, forcedRotation, skipUndoStack = false) {
     if (x < -49 || x >= 49 || z < -49 || z >= 49) {
         console.log('Out of bounds');
         return;
@@ -1664,6 +1775,17 @@ function placeBuilding(type, x, z, forcedRotation) {
     
     // Use forced rotation if provided (for loading saved games)
     const rotation = forcedRotation !== undefined ? forcedRotation : currentRotation;
+    
+    // Add to undo stack before placing
+    if (!skipUndoStack) {
+        addToUndoStack({
+            type: 'place_building',
+            buildingType: type,
+            x,
+            z,
+            rotation
+        });
+    }
     
     let buildingGeometry, buildingMaterial;
     
