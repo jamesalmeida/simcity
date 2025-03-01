@@ -328,9 +328,10 @@ function completeSaveWithCityInfo() {
         return;
     }
     
-    // Add city name and description to the save data
+    // Add city name, description, and auto-save preference to the save data
     pendingSaveData.cityName = cityNameInput.value.trim() || 'Unnamed City';
     pendingSaveData.cityDescription = cityDescriptionInput.value.trim();
+    pendingSaveData.autoSaveEnabled = autoSaveCheckbox.checked;
     
     // Save to localStorage
     localStorage.setItem(pendingSaveId, JSON.stringify(pendingSaveData));
@@ -508,6 +509,16 @@ function loadGameState(saveId) {
             currentCityId = saveId;
             currentCityName = data.cityName || 'Unnamed City';
             currentCityDescription = data.cityDescription || '';
+            
+            // Restore auto-save preference if it exists in the save data
+            if (data.autoSaveEnabled !== undefined) {
+                autoSaveCheckbox.checked = data.autoSaveEnabled;
+                if (data.autoSaveEnabled) {
+                    startAutoSave();
+                } else {
+                    stopAutoSave();
+                }
+            }
             
             // Hide loading spinner
             loadingSpinner.classList.add('hidden');
