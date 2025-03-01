@@ -4,28 +4,25 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>3D City Builder</title>
-    <style>
-        body { margin: 0; }
-        #game-container { width: 100vw; height: 100vh; }
-        #ui-container {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            z-index: 10;
-            background-color: rgba(255, 255, 255, 0.7);
-            padding: 10px;
-            border-radius: 5px;
-        }
-    </style>
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <div id="ui-container">
-        <button id="residential-btn">Residential</button>
-        <button id="commercial-btn">Commercial</button>
-        <button id="industrial-btn">Industrial</button>
-        <button id="horizontal-road-btn">Horizontal Road</button>
-        <button id="vertical-road-btn">Vertical Road</button>
+        <div class="button-group">
+            <button id="residential-btn">Residential</button>
+            <button id="commercial-btn">Commercial</button>
+            <button id="industrial-btn">Industrial</button>
+            <button id="road-btn">Road</button>
+        </div>
+        <div class="divider"></div>
+        <div class="button-group">
+            <button id="bulldozer-btn">🚧 Bulldozer</button>
+        </div>
         <div id="population-display">Population: 0</div>
+        <div class="controls-info">
+            Press 'R' to rotate the selected item<br>
+            Press 'ESC' to deselect
+        </div>
     </div>
     <div id="game-container"></div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
