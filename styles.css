@@ -211,3 +211,18 @@ button#load-city-btn {
 .hidden {
     display: none;
 }
+
+@media (max-width: 768px) {
+    #ui-container, #save-load-container {
+        font-size: 0.8em;
+    }
+    
+    button {
+        padding: 8px;
+    }
+    
+    #modal-content {
+        width: 90%;
+        margin: 5% auto;
+    }
+}
