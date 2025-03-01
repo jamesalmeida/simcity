@@ -61,10 +61,21 @@ button#bulldozer-btn.selected {
 
 button#save-city-btn {
     background-color: var(--color-primary);
+    color: white;
+    border: none;
+}
+
+button#save-as-btn {
+    background-color: var(--color-primary);
+    color: white;
+    border: none;
+    opacity: 0.85;
 }
 
 button#load-city-btn {
     background-color: var(--color-secondary);
+    color: white;
+    border: none;
 }
 
 .button-group {
@@ -167,9 +178,18 @@ button#load-city-btn {
     align-items: center;
 }
 
-.city-date {
+.city-name {
     font-weight: bold;
+    font-size: 1.1em;
     margin-bottom: 4px;
+    color: var(--color-primary);
+}
+
+.city-date {
+    font-weight: normal;
+    margin-bottom: 4px;
+    font-size: 0.9em;
+    color: #666;
 }
 
 .city-stats {
@@ -177,9 +197,30 @@ button#load-city-btn {
     color: #666;
 }
 
+.city-description {
+    font-size: 0.85em;
+    color: #777;
+    font-style: italic;
+    margin-top: 4px;
+    max-width: 400px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 .load-btn {
     padding: 6px 12px;
     background-color: #2196F3;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    margin-right: 8px;
+    cursor: pointer;
+}
+
+.edit-btn {
+    padding: 6px 12px;
+    background-color: #FF9800;
     color: white;
     border: none;
     border-radius: 4px;
@@ -208,6 +249,56 @@ button#load-city-btn {
     z-index: 3000;
 }
 
+/* City Info Form Styles */
+#city-info-form {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    width: 400px;
+    max-width: 90%;
+    z-index: 2500;
+}
+
+#city-info-form label {
+    display: block;
+    margin-bottom: 6px;
+    font-weight: bold;
+    color: var(--color-dark);
+}
+
+#city-info-form input,
+#city-info-form textarea {
+    width: 100%;
+    padding: 8px;
+    margin-bottom: 16px;
+    border: 1px solid #ddd;
+    border-radius: var(--border-radius);
+    font-family: inherit;
+    box-sizing: border-box;
+}
+
+#city-info-form textarea {
+    height: 100px;
+    resize: vertical;
+}
+
+#save-city-info {
+    background-color: var(--color-primary);
+    color: white;
+    border: none;
+}
+
+#cancel-city-info {
+    background-color: #999;
+    color: white;
+    border: none;
+}
+
 .hidden {
     display: none;
 }
@@ -224,5 +315,9 @@ button#load-city-btn {
     #modal-content {
         width: 90%;
         margin: 5% auto;
+    }
+    
+    #city-info-form {
+        width: 90%;
     }
 }

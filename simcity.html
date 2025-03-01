@@ -30,6 +30,7 @@
     <div id="save-load-container">
         <button id="new-city-btn">New City</button>
         <button id="save-city-btn">Save City</button>
+        <button id="save-as-btn">Save As...</button>
         <button id="load-city-btn">Load City</button>
         <div id="auto-save-container">
             <input type="checkbox" id="auto-save" checked>
@@ -47,6 +48,17 @@
             <h2>Load Saved City</h2>
             <div id="saved-cities-list"></div>
         </div>
+    </div>
+
+    <div id="city-info-form" class="hidden">
+        <label for="city-name">City Name:</label>
+        <input type="text" id="city-name" placeholder="My Awesome City">
+        
+        <label for="city-description">Description:</label>
+        <textarea id="city-description" placeholder="A brief description of your city..."></textarea>
+        
+        <button id="save-city-info">Save</button>
+        <button id="cancel-city-info">Cancel</button>
     </div>
 
     <div id="loading-spinner" class="hidden">Loading...</div>

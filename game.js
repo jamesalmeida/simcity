@@ -100,6 +100,7 @@ controls.target.set(0, 0, 0);
 const saveLoadContainer = document.getElementById('save-load-container');
 const newCityButton = document.getElementById('new-city-btn');
 const saveButton = document.getElementById('save-city-btn');
+const saveAsButton = document.getElementById('save-as-btn');
 const loadButton = document.getElementById('load-city-btn');
 const autoSaveCheckbox = document.getElementById('auto-save');
 const saveNotification = document.getElementById('save-notification');
@@ -107,6 +108,23 @@ const loadModal = document.getElementById('load-modal');
 const modalContent = document.getElementById('modal-content');
 const closeModalBtn = document.getElementById('close-modal-btn');
 const savedCitiesList = document.getElementById('saved-cities-list');
+
+// City info form elements
+const cityInfoForm = document.getElementById('city-info-form');
+const cityNameInput = document.getElementById('city-name');
+const cityDescriptionInput = document.getElementById('city-description');
+const saveCityInfoBtn = document.getElementById('save-city-info');
+const cancelCityInfoBtn = document.getElementById('cancel-city-info');
+const loadingSpinner = document.getElementById('loading-spinner');
+
+// Variables to store pending save data
+let pendingSaveData = null;
+let pendingSaveId = null;
+
+// Variables to track the currently loaded city
+let currentCityId = null;
+let currentCityName = null;
+let currentCityDescription = null;
 
 // Close the modal when close button is clicked
 closeModalBtn.onclick = function() {
@@ -137,6 +155,8 @@ function getSavedCities() {
                 const data = JSON.parse(localStorage.getItem(key));
                 cities.push({
                     id: key,
+                    name: data.cityName || 'Unnamed City',
+                    description: data.cityDescription || '',
                     timestamp: new Date(data.timestamp),
                     stats: data.stats,
                     buildings: data.buildings.length,
@@ -177,6 +197,11 @@ function populateSavedCitiesList() {
         // City info
         const cityInfo = document.createElement('div');
         
+        const cityNameElem = document.createElement('div');
+        cityNameElem.className = 'city-name';
+        cityNameElem.textContent = city.name;
+        cityInfo.appendChild(cityNameElem);
+        
         const cityDate = document.createElement('div');
         cityDate.className = 'city-date';
         cityDate.textContent = city.timestamp.toLocaleString();
@@ -186,6 +211,13 @@ function populateSavedCitiesList() {
         cityStats.className = 'city-stats';
         cityStats.textContent = `Population: ${Math.floor(city.stats.population)} | Buildings: ${city.buildings} | Roads: ${city.roads}`;
         cityInfo.appendChild(cityStats);
+        
+        if (city.description) {
+            const cityDesc = document.createElement('div');
+            cityDesc.className = 'city-description';
+            cityDesc.textContent = city.description;
+            cityInfo.appendChild(cityDesc);
+        }
         
         cityItem.appendChild(cityInfo);
         
@@ -200,6 +232,14 @@ function populateSavedCitiesList() {
             loadModal.style.display = 'none';
         };
         buttonsContainer.appendChild(loadBtn);
+        
+        const editBtn = document.createElement('button');
+        editBtn.className = 'edit-btn';
+        editBtn.textContent = 'Edit Info';
+        editBtn.onclick = function() {
+            editCityInfo(city.id, city.name, city.description);
+        };
+        buttonsContainer.appendChild(editBtn);
         
         const deleteBtn = document.createElement('button');
         deleteBtn.className = 'delete-btn';
@@ -221,8 +261,430 @@ function populateSavedCitiesList() {
     });
 }
 
+// Function to edit city info for an existing save
+function editCityInfo(saveId, currentName, currentDescription) {
+    // Store the save ID for later use
+    pendingSaveId = saveId;
+    
+    // Load the existing save data
+    const savedData = localStorage.getItem(saveId);
+    if (!savedData) {
+        console.error('Save data not found');
+        return;
+    }
+    
+    pendingSaveData = JSON.parse(savedData);
+    
+    // Set form values to current values
+    cityNameInput.value = currentName || 'Unnamed City';
+    cityDescriptionInput.value = currentDescription || '';
+    
+    // Show the form
+    cityInfoForm.classList.remove('hidden');
+    
+    // Update the save button text to indicate we're editing
+    saveCityInfoBtn.textContent = 'Update Info';
+    
+    // Hide the load modal while editing
+    loadModal.style.display = 'none';
+    
+    // If this is the currently loaded city, update the current city info when done
+    if (saveId === currentCityId) {
+        saveCityInfoBtn.dataset.updateCurrent = 'true';
+    } else {
+        saveCityInfoBtn.dataset.updateCurrent = 'false';
+    }
+}
+
+// Function to show the city info form for a new save
+function showCityInfoForm() {
+    // Set default values
+    cityNameInput.value = 'My Awesome City';
+    cityDescriptionInput.value = '';
+    
+    // Show the form
+    cityInfoForm.classList.remove('hidden');
+    
+    // Make sure the save button has the correct text
+    saveCityInfoBtn.textContent = 'Save';
+}
+
+// Function to hide the city info form
+function hideCityInfoForm() {
+    cityInfoForm.classList.add('hidden');
+    
+    // Reset pending save data if we're canceling a new save
+    // (not when we're just finishing an edit)
+    if (saveCityInfoBtn.textContent === 'Save') {
+        pendingSaveData = null;
+        pendingSaveId = null;
+    }
+}
+
+// Function to complete the save process with city info
+function completeSaveWithCityInfo() {
+    if (!pendingSaveData || !pendingSaveId) {
+        console.error('No pending save data');
+        return;
+    }
+    
+    // Add city name and description to the save data
+    pendingSaveData.cityName = cityNameInput.value.trim() || 'Unnamed City';
+    pendingSaveData.cityDescription = cityDescriptionInput.value.trim();
+    
+    // Save to localStorage
+    localStorage.setItem(pendingSaveId, JSON.stringify(pendingSaveData));
+    
+    // Update auto-save ID if this is the most recent save
+    if (localStorage.getItem('simcity_autosave_id') === pendingSaveId) {
+        localStorage.setItem('simcity_autosave_id', pendingSaveId);
+    }
+    
+    // Check if we need to update the current city information
+    if (saveCityInfoBtn.dataset.updateCurrent === 'true' || pendingSaveId === currentCityId) {
+        currentCityId = pendingSaveId;
+        currentCityName = pendingSaveData.cityName;
+        currentCityDescription = pendingSaveData.cityDescription;
+    }
+    
+    // Hide the form
+    hideCityInfoForm();
+    
+    // Show save notification
+    showNotification(`City "${pendingSaveData.cityName}" saved!`);
+    
+    console.log('Game state saved with ID:', pendingSaveId);
+    
+    // Reset the save button text
+    saveCityInfoBtn.textContent = 'Save';
+    
+    // Reset the dataset attribute
+    saveCityInfoBtn.dataset.updateCurrent = 'false';
+    
+    // If we were editing from the load modal, show it again
+    if (loadModal.style.display === 'none' && document.activeElement !== saveButton) {
+        loadModal.style.display = 'block';
+        populateSavedCitiesList(); // Refresh the list
+    }
+}
+
 // Save game state to localStorage
 function saveGameState() {
+    // Show loading spinner
+    loadingSpinner.classList.remove('hidden');
+    
+    setTimeout(() => {
+        // Save buildings
+        const buildingsData = [];
+        cityGrid.forEach((building, key) => {
+            const [x, z] = key.split('_').map(Number);
+            buildingsData.push({
+                x,
+                z,
+                type: building.type,
+                rotation: building.rotation
+            });
+        });
+
+        // Save roads
+        const roadsData = [];
+        roadGrid.forEach((roadInfo, key) => {
+            const [x, z] = key.split('_').map(Number);
+            roadsData.push({
+                x,
+                z,
+                roadType: roadInfo.roadType
+            });
+        });
+
+        // Save game stats
+        const gameStats = {
+            numResidential,
+            numCommercial,
+            numIndustrial,
+            population
+        };
+
+        // Create save data object
+        const saveData = {
+            buildings: buildingsData,
+            roads: roadsData,
+            stats: gameStats,
+            timestamp: new Date().toISOString()
+        };
+
+        // Check if we're saving a previously loaded city
+        if (currentCityId && currentCityName) {
+            // Reuse the existing city ID, name, and description
+            saveData.cityName = currentCityName;
+            saveData.cityDescription = currentCityDescription || '';
+            
+            // Save directly without showing the form
+            localStorage.setItem(currentCityId, JSON.stringify(saveData));
+            
+            // Update auto-save ID to the most recent save
+            localStorage.setItem('simcity_autosave_id', currentCityId);
+            
+            // Hide loading spinner
+            loadingSpinner.classList.add('hidden');
+            
+            // Show save notification
+            showNotification(`City "${currentCityName}" saved!`);
+            
+            console.log('Game state saved with ID:', currentCityId);
+        } else {
+            // Generate a new save ID for a new city
+            const saveId = generateSaveId();
+            
+            // Store pending save data
+            pendingSaveData = saveData;
+            pendingSaveId = saveId;
+            
+            // Hide loading spinner
+            loadingSpinner.classList.add('hidden');
+            
+            // Show city info form to get name and description
+            showCityInfoForm();
+        }
+    }, 100); // Small delay to ensure UI updates
+}
+
+// Load game state from localStorage
+function loadGameState(saveId) {
+    // Show loading spinner
+    loadingSpinner.classList.remove('hidden');
+    
+    setTimeout(() => {
+        const savedData = saveId ? 
+            localStorage.getItem(saveId) : 
+            localStorage.getItem(localStorage.getItem('simcity_autosave_id') || '');
+        
+        if (!savedData) {
+            console.log('No saved game found');
+            showNotification('No saved game found');
+            loadingSpinner.classList.add('hidden');
+            return false;
+        }
+        
+        try {
+            // Parse the saved data
+            const data = JSON.parse(savedData);
+            
+            // Clear current city
+            cityGrid.forEach((building, key) => {
+                scene.remove(building);
+            });
+            roadGrid.forEach((roadInfo, key) => {
+                scene.remove(roadInfo.mesh);
+            });
+            
+            cityGrid.clear();
+            roadGrid.clear();
+            
+            // Reset counters
+            numResidential = data.stats.numResidential;
+            numCommercial = data.stats.numCommercial;
+            numIndustrial = data.stats.numIndustrial;
+            population = data.stats.population;
+            
+            // Rebuild roads first (so buildings detect them correctly)
+            data.roads.forEach(roadData => {
+                const roadType = roadData.roadType;
+                const roadGroup = createRoadGroup(roadType);
+                roadGroup.position.set(roadData.x + 0.5, 0.005, roadData.z + 0.5);
+                scene.add(roadGroup);
+                roadGrid.set(`${roadData.x}_${roadData.z}`, { mesh: roadGroup, roadType });
+            });
+            
+            // Rebuild buildings
+            data.buildings.forEach(buildingData => {
+                placeBuilding(buildingData.type, buildingData.x, buildingData.z, buildingData.rotation);
+            });
+            
+            // Update UI
+            document.getElementById('population-display').textContent = `Population: ${Math.floor(population)}`;
+            
+            // Store current city information
+            currentCityId = saveId;
+            currentCityName = data.cityName || 'Unnamed City';
+            currentCityDescription = data.cityDescription || '';
+            
+            // Hide loading spinner
+            loadingSpinner.classList.add('hidden');
+            
+            console.log(`Game loaded successfully from ${data.timestamp}`);
+            
+            // Show load notification with city name if available
+            showNotification(`City "${currentCityName}" loaded successfully`);
+        
+            return true;
+        } catch (error) {
+            console.error('Error loading game state:', error);
+            
+            // Hide loading spinner
+            loadingSpinner.classList.add('hidden');
+            
+            // Show error notification
+            showNotification('Error loading city');
+            
+            return false;
+        }
+    }, 100); // Small delay to ensure UI updates
+}
+
+// Create a new city (clear everything)
+function createNewCity() {
+    // Confirm before clearing
+    if (!confirm('Are you sure you want to start a new city? All unsaved progress will be lost.')) {
+        return;
+    }
+    
+    // Clear current city
+    cityGrid.forEach((building, key) => {
+        scene.remove(building);
+    });
+    
+    roadGrid.forEach((roadInfo, key) => {
+        scene.remove(roadInfo.mesh);
+    });
+    
+    cityGrid.clear();
+    roadGrid.clear();
+    
+    // Reset counters
+    numResidential = 0;
+    numCommercial = 0;
+    numIndustrial = 0;
+    population = 0;
+    
+    // Reset current city information
+    currentCityId = null;
+    currentCityName = null;
+    currentCityDescription = null;
+    
+    // Update UI
+    document.getElementById('population-display').textContent = `Population: ${Math.floor(population)}`;
+    
+    // Show notification
+    showNotification('Started a new city');    
+    console.log('Created new city');
+}
+
+// Function to save the game with a new name and description
+function saveAsGameState() {
+    // Show loading spinner
+    loadingSpinner.classList.remove('hidden');
+    
+    setTimeout(() => {
+        // Save buildings
+        const buildingsData = [];
+        cityGrid.forEach((building, key) => {
+            const [x, z] = key.split('_').map(Number);
+            buildingsData.push({
+                x,
+                z,
+                type: building.type,
+                rotation: building.rotation
+            });
+        });
+
+        // Save roads
+        const roadsData = [];
+        roadGrid.forEach((roadInfo, key) => {
+            const [x, z] = key.split('_').map(Number);
+            roadsData.push({
+                x,
+                z,
+                roadType: roadInfo.roadType
+            });
+        });
+
+        // Save game stats
+        const gameStats = {
+            numResidential,
+            numCommercial,
+            numIndustrial,
+            population
+        };
+
+        // Create save data object
+        const saveData = {
+            buildings: buildingsData,
+            roads: roadsData,
+            stats: gameStats,
+            timestamp: new Date().toISOString()
+        };
+
+        // Generate a new save ID for the "Save As" operation
+        const saveId = generateSaveId();
+        
+        // Store pending save data
+        pendingSaveData = saveData;
+        pendingSaveId = saveId;
+        
+        // Hide loading spinner
+        loadingSpinner.classList.add('hidden');
+        
+        // Pre-fill the form with current values if available
+        if (currentCityName) {
+            cityNameInput.value = currentCityName;
+            cityDescriptionInput.value = currentCityDescription || '';
+        } else {
+            cityNameInput.value = 'My Awesome City';
+            cityDescriptionInput.value = '';
+        }
+        
+        // Show city info form to get name and description
+        cityInfoForm.classList.remove('hidden');
+        saveCityInfoBtn.textContent = 'Save';
+    }, 100); // Small delay to ensure UI updates
+}
+
+// Event listeners for buttons
+newCityButton.addEventListener('click', createNewCity);
+saveButton.addEventListener('click', saveGameState);
+saveAsButton.addEventListener('click', saveAsGameState);
+loadButton.addEventListener('click', () => {
+    // Populate the list of saved cities
+    populateSavedCitiesList();
+    // Show the modal
+    loadModal.style.display = 'block';
+});
+
+// City info form event listeners
+saveCityInfoBtn.addEventListener('click', () => {
+    completeSaveWithCityInfo();
+});
+
+cancelCityInfoBtn.addEventListener('click', () => {
+    if (confirm('Cancel saving? Your city will not be saved.')) {
+        hideCityInfoForm();
+    }
+});
+
+// Auto-save functionality (every 60 seconds)
+const AUTO_SAVE_INTERVAL = 60000; // 1 minute
+let autoSaveTimer;
+
+// Default city name and description for auto-saves
+let defaultCityName = 'Auto-saved City';
+let defaultCityDescription = 'This city was automatically saved.';
+
+function startAutoSave() {
+    autoSaveTimer = setInterval(() => {
+        if (autoSaveCheckbox.checked) {
+            // Auto-save without showing the form
+            autoSaveGameState();
+        }
+    }, AUTO_SAVE_INTERVAL);
+}
+
+function stopAutoSave() {
+    clearInterval(autoSaveTimer);
+}
+
+// Function for auto-saving without showing the form
+function autoSaveGameState() {
     // Save buildings
     const buildingsData = [];
     cityGrid.forEach((building, key) => {
@@ -254,12 +716,14 @@ function saveGameState() {
         population
     };
 
-    // Save to localStorage with a unique ID
+    // Create save data object with city name and description
     const saveData = {
         buildings: buildingsData,
         roads: roadsData,
         stats: gameStats,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        cityName: currentCityName || defaultCityName,
+        cityDescription: currentCityDescription || defaultCityDescription
     };
 
     // Generate save ID
@@ -272,134 +736,9 @@ function saveGameState() {
     localStorage.setItem('simcity_autosave_id', saveId);
     
     // Show save notification
-    showNotification(`City saved: ${new Date().toLocaleTimeString()}`);
+    showNotification(`Auto-saved: ${new Date().toLocaleTimeString()}`);
     
-    console.log('Game state saved with ID:', saveId);
-}
-
-// Load game state from localStorage
-function loadGameState(saveId) {
-    const savedData = saveId ? 
-        localStorage.getItem(saveId) : 
-        localStorage.getItem(localStorage.getItem('simcity_autosave_id') || '');
-    
-    if (!savedData) {
-        console.log('No saved game found');
-        showNotification('No saved game found');
-        return false;
-    }
-    
-    try {
-        // Parse the saved data
-        const data = JSON.parse(savedData);
-        
-        // Clear current city
-        cityGrid.forEach((building, key) => {
-            scene.remove(building);
-        });
-        roadGrid.forEach((roadInfo, key) => {
-            scene.remove(roadInfo.mesh);
-        });
-        
-        cityGrid.clear();
-        roadGrid.clear();
-        
-        // Reset counters
-        numResidential = data.stats.numResidential;
-        numCommercial = data.stats.numCommercial;
-        numIndustrial = data.stats.numIndustrial;
-        population = data.stats.population;
-        
-        // Rebuild roads first (so buildings detect them correctly)
-        data.roads.forEach(roadData => {
-            const roadType = roadData.roadType;
-            const roadGroup = createRoadGroup(roadType);
-            roadGroup.position.set(roadData.x + 0.5, 0.005, roadData.z + 0.5);
-            scene.add(roadGroup);
-            roadGrid.set(`${roadData.x}_${roadData.z}`, { mesh: roadGroup, roadType });
-        });
-        
-        // Rebuild buildings
-        data.buildings.forEach(buildingData => {
-            placeBuilding(buildingData.type, buildingData.x, buildingData.z, buildingData.rotation);
-        });
-        
-        // Update UI
-        document.getElementById('population-display').textContent = `Population: ${Math.floor(population)}`;
-        
-        console.log(`Game loaded successfully from ${data.timestamp}`);
-        
-        // Show load notification
-        showNotification('City loaded successfully');
-    
-        return true;
-    } catch (error) {
-        console.error('Error loading game state:', error);
-        
-        // Show error notification
-        showNotification('Error loading city');
-        
-        return false;
-    }
-}
-
-// Create a new city (clear everything)
-function createNewCity() {
-    // Confirm before clearing
-    if (!confirm('Are you sure you want to start a new city? All unsaved progress will be lost.')) {
-        return;
-    }
-    
-    // Clear current city
-    cityGrid.forEach((building, key) => {
-        scene.remove(building);
-    });
-    
-    roadGrid.forEach((roadInfo, key) => {
-        scene.remove(roadInfo.mesh);
-    });
-    
-    cityGrid.clear();
-    roadGrid.clear();
-    
-    // Reset counters
-    numResidential = 0;
-    numCommercial = 0;
-    numIndustrial = 0;
-    population = 0;
-    
-    // Update UI
-    document.getElementById('population-display').textContent = `Population: ${Math.floor(population)}`;
-    
-    // Show notification
-    showNotification('Started a new city');    
-    console.log('Created new city');
-}
-
-// Event listeners for buttons
-newCityButton.addEventListener('click', createNewCity);
-saveButton.addEventListener('click', saveGameState);
-loadButton.addEventListener('click', () => {
-    // Populate the list of saved cities
-    populateSavedCitiesList();
-    // Show the modal
-    loadModal.style.display = 'block';
-});
-
-// Auto-save functionality (every 60 seconds)
-const AUTO_SAVE_INTERVAL = 60000; // 1 minute
-let autoSaveTimer;
-
-function startAutoSave() {
-    autoSaveTimer = setInterval(() => {
-        if (autoSaveCheckbox.checked) {
-            saveGameState();
-        }
-    }, AUTO_SAVE_INTERVAL);
-}
-
-function stopAutoSave() {
-    clearInterval(autoSaveTimer);
+    console.log('Game auto-saved with ID:', saveId);
 }
 
 autoSaveCheckbox.addEventListener('change', () => {
