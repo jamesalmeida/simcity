@@ -25,6 +25,30 @@
             Press ⌘Z (Mac) or Ctrl+Z (Windows) to undo
         </div>
     </div>
+
+    <!-- Save/Load UI Container -->
+    <div id="save-load-container">
+        <button id="new-city-btn">New City</button>
+        <button id="save-city-btn">Save City</button>
+        <button id="load-city-btn">Load City</button>
+        <div id="auto-save-container">
+            <input type="checkbox" id="auto-save" checked>
+            <label for="auto-save">Auto-save</label>
+        </div>
+    </div>
+
+    <!-- Save Notification -->
+    <div id="save-notification"></div>
+
+    <!-- Load Modal Dialog -->
+    <div id="load-modal">
+        <div id="modal-content">
+            <span id="close-modal-btn">&times;</span>
+            <h2>Load Saved City</h2>
+            <div id="saved-cities-list"></div>
+        </div>
+    </div>
+
     <div id="game-container"></div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>

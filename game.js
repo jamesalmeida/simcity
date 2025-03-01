@@ -95,124 +95,17 @@ const controls = new THREE.OrbitControls(camera, renderer.domElement);
 controls.target.set(0, 0, 0);
 
 // Game save/load functionality
-// Add save/load button to UI
-const saveLoadContainer = document.createElement('div');
-saveLoadContainer.style.position = 'absolute';
-saveLoadContainer.style.top = '10px';
-saveLoadContainer.style.right = '10px';
-saveLoadContainer.style.zIndex = '1000';
-document.body.appendChild(saveLoadContainer);
-
-const newCityButton = document.createElement('button');
-newCityButton.textContent = 'New City';
-newCityButton.style.padding = '8px 16px';
-newCityButton.style.marginRight = '10px';
-newCityButton.style.backgroundColor = '#FF9800'; // Orange
-newCityButton.style.color = 'white';
-newCityButton.style.border = 'none';
-newCityButton.style.borderRadius = '4px';
-newCityButton.style.cursor = 'pointer';
-saveLoadContainer.appendChild(newCityButton);
-
-const saveButton = document.createElement('button');
-saveButton.textContent = 'Save City';
-saveButton.style.padding = '8px 16px';
-saveButton.style.marginRight = '10px';
-saveButton.style.backgroundColor = '#4CAF50';
-saveButton.style.color = 'white';
-saveButton.style.border = 'none';
-saveButton.style.borderRadius = '4px';
-saveButton.style.cursor = 'pointer';
-saveLoadContainer.appendChild(saveButton);
-
-const loadButton = document.createElement('button');
-loadButton.textContent = 'Load City';
-loadButton.style.padding = '8px 16px';
-loadButton.style.backgroundColor = '#2196F3';
-loadButton.style.color = 'white';
-loadButton.style.border = 'none';
-loadButton.style.borderRadius = '4px';
-loadButton.style.cursor = 'pointer';
-saveLoadContainer.appendChild(loadButton);
-
-// Auto-save toggle
-const autoSaveContainer = document.createElement('div');
-autoSaveContainer.style.marginTop = '10px';
-saveLoadContainer.appendChild(autoSaveContainer);
-
-const autoSaveCheckbox = document.createElement('input');
-autoSaveCheckbox.type = 'checkbox';
-autoSaveCheckbox.id = 'auto-save';
-autoSaveCheckbox.checked = true;
-autoSaveContainer.appendChild(autoSaveCheckbox);
-
-const autoSaveLabel = document.createElement('label');
-autoSaveLabel.htmlFor = 'auto-save';
-autoSaveLabel.textContent = 'Auto-save';
-autoSaveLabel.style.color = 'white';
-autoSaveLabel.style.marginLeft = '5px';
-autoSaveContainer.appendChild(autoSaveLabel);
-
-// Save notification element
-const saveNotification = document.createElement('div');
-saveNotification.style.position = 'absolute';
-saveNotification.style.bottom = '20px';
-saveNotification.style.right = '20px';
-saveNotification.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
-saveNotification.style.color = 'white';
-saveNotification.style.padding = '10px 20px';
-saveNotification.style.borderRadius = '5px';
-saveNotification.style.opacity = '0';
-saveNotification.style.transition = 'opacity 0.3s ease-in-out';
-saveNotification.style.zIndex = '1000';
-document.body.appendChild(saveNotification);
-
-// Load dialog modal
-const loadModal = document.createElement('div');
-loadModal.style.display = 'none';
-loadModal.style.position = 'fixed';
-loadModal.style.zIndex = '2000';
-loadModal.style.left = '0';
-loadModal.style.top = '0';
-loadModal.style.width = '100%';
-loadModal.style.height = '100%';
-loadModal.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
-loadModal.style.overflow = 'auto';
-document.body.appendChild(loadModal);
-
-// Modal content
-const modalContent = document.createElement('div');
-modalContent.style.backgroundColor = '#f4f4f4';
-modalContent.style.margin = '10% auto';
-modalContent.style.padding = '20px';
-modalContent.style.width = '60%';
-modalContent.style.maxWidth = '600px';
-modalContent.style.borderRadius = '8px';
-modalContent.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.2)';
-loadModal.appendChild(modalContent);
-
-// Close button
-const closeModalBtn = document.createElement('span');
-closeModalBtn.innerHTML = '&times;';
-closeModalBtn.style.color = '#aaa';
-closeModalBtn.style.float = 'right';
-closeModalBtn.style.fontSize = '28px';
-closeModalBtn.style.fontWeight = 'bold';
-closeModalBtn.style.cursor = 'pointer';
-modalContent.appendChild(closeModalBtn);
-
-// Modal header
-const modalHeader = document.createElement('h2');
-modalHeader.textContent = 'Load Saved City';
-modalHeader.style.marginTop = '0';
-modalContent.appendChild(modalHeader);
-
-// Saved cities list container
-const savedCitiesList = document.createElement('div');
-savedCitiesList.style.marginTop = '20px';
-savedCitiesList.style.maxHeight = '400px';
-savedCitiesList.style.overflowY = 'auto';
-modalContent.appendChild(savedCitiesList);
+// Get references to the DOM elements we added to HTML
+const saveLoadContainer = document.getElementById('save-load-container');
+const newCityButton = document.getElementById('new-city-btn');
+const saveButton = document.getElementById('save-city-btn');
+const loadButton = document.getElementById('load-city-btn');
+const autoSaveCheckbox = document.getElementById('auto-save');
+const saveNotification = document.getElementById('save-notification');
+const loadModal = document.getElementById('load-modal');
+const modalContent = document.getElementById('modal-content');
+const closeModalBtn = document.getElementById('close-modal-btn');
+const savedCitiesList = document.getElementById('saved-cities-list');
 
 // Close the modal when close button is clicked
 closeModalBtn.onclick = function() {
@@ -276,28 +169,20 @@ function populateSavedCitiesList() {
     }
     
     cities.forEach(city => {
+        // Create city item with CSS classes instead of inline styles
         const cityItem = document.createElement('div');
-        cityItem.style.padding = '12px';
-        cityItem.style.marginBottom = '8px';
-        cityItem.style.backgroundColor = '#fff';
-        cityItem.style.borderRadius = '4px';
-        cityItem.style.boxShadow = '0 1px 3px rgba(0, 0, 0, 0.1)';
-        cityItem.style.display = 'flex';
-        cityItem.style.justifyContent = 'space-between';
-        cityItem.style.alignItems = 'center';
+        cityItem.className = 'city-item';
         
         // City info
         const cityInfo = document.createElement('div');
         
         const cityDate = document.createElement('div');
+        cityDate.className = 'city-date';
         cityDate.textContent = city.timestamp.toLocaleString();
-        cityDate.style.fontWeight = 'bold';
-        cityDate.style.marginBottom = '4px';
         cityInfo.appendChild(cityDate);
         
         const cityStats = document.createElement('div');
-        cityStats.style.fontSize = '0.9em';
-        cityStats.style.color = '#666';
+        cityStats.className = 'city-stats';
         cityStats.textContent = `Population: ${Math.floor(city.stats.population)} | Buildings: ${city.buildings} | Roads: ${city.roads}`;
         cityInfo.appendChild(cityStats);
         
@@ -307,14 +192,8 @@ function populateSavedCitiesList() {
         const buttonsContainer = document.createElement('div');
         
         const loadBtn = document.createElement('button');
+        loadBtn.className = 'load-btn';
         loadBtn.textContent = 'Load';
-        loadBtn.style.padding = '6px 12px';
-        loadBtn.style.backgroundColor = '#2196F3';
-        loadBtn.style.color = 'white';
-        loadBtn.style.border = 'none';
-        loadBtn.style.borderRadius = '4px';
-        loadBtn.style.marginRight = '8px';
-        loadBtn.style.cursor = 'pointer';
         loadBtn.onclick = function() {
             loadGameState(city.id);
             loadModal.style.display = 'none';
@@ -322,13 +201,8 @@ function populateSavedCitiesList() {
         buttonsContainer.appendChild(loadBtn);
         
         const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'delete-btn';
         deleteBtn.textContent = 'Delete';
-        deleteBtn.style.padding = '6px 12px';
-        deleteBtn.style.backgroundColor = '#F44336';
-        deleteBtn.style.color = 'white';
-        deleteBtn.style.border = 'none';
-        deleteBtn.style.borderRadius = '4px';
-        deleteBtn.style.cursor = 'pointer';
         deleteBtn.onclick = function() {
             if (confirm('Are you sure you want to delete this saved city?')) {
                 localStorage.removeItem(city.id);
@@ -1212,18 +1086,26 @@ function createRoadGroup(roadType) {
             roadGroup.add(swCorner);
             
             // Add north-south crosswalks
-            const northCrosswalk = createCrosswalk(true);
-            northCrosswalk.position.set(0, 0.001, -0.45);
-            
-            const southCrosswalk = createCrosswalk(true);
-            southCrosswalk.position.set(0, 0.001, 0.45);
-            
+            const northCrosswalk = new THREE.Mesh(
+                new THREE.BoxGeometry(0.1, 0.015, 0.02),
+                laneLineMaterial
+            );
+            northCrosswalk.position.set(0, 0.002, -0.45);
             roadGroup.add(northCrosswalk);
+            
+            const southCrosswalk = new THREE.Mesh(
+                new THREE.BoxGeometry(0.1, 0.015, 0.02),
+                laneLineMaterial
+            );
+            southCrosswalk.position.set(0, 0.002, 0.45);
             roadGroup.add(southCrosswalk);
             
             // Add east crosswalk
-            const eastCrosswalk = createCrosswalk(false);
-            eastCrosswalk.position.set(0.45, 0.001, 0);
+            const eastCrosswalk = new THREE.Mesh(
+                new THREE.BoxGeometry(0.02, 0.015, 0.1),
+                laneLineMaterial
+            );
+            eastCrosswalk.position.set(0.45, 0.002, 0);
             roadGroup.add(eastCrosswalk);
         }
     };
