@@ -151,6 +151,8 @@ scene.add(gridHelper);
 // Orbit controls
 const controls = new THREE.OrbitControls(camera, renderer.domElement);
 controls.target.set(0, 0, 0);
+controls.maxDistance = 75;
+controls.minDistance = 5;
 
 // Game save/load functionality
 // Get references to the DOM elements we added to HTML
