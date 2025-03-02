@@ -285,7 +285,7 @@ CityBuilder.game.loadCityData = function(data) {
         const sizeZ = Math.max(10, maxZ - minZ + 10); // Add padding
         
         // Position camera to view the entire city
-        const distance = Math.max(sizeX, sizeZ) * 1.5;
+        const distance = Math.max(sizeX, sizeZ) * 0.5;
         camera.position.set(centerX + distance, distance, centerZ + distance);
         camera.lookAt(centerX, 0, centerZ);
     }
