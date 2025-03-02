@@ -2248,6 +2248,15 @@ function createHouseBuilding() {
     sideWindow2.position.set(-bodyWidth/2 - 0.001, bodyHeight/2, 0);
     sideWindow2.rotation.y = Math.PI / 2;
     houseGroup.add(sideWindow2);
+
+    // Add a small chimney
+    const chimneyWidth = 0.1;
+    const chimneyHeight = 0.2;
+    const chimneyGeometry = new THREE.BoxGeometry(chimneyWidth, chimneyHeight, chimneyWidth);
+    const chimneyMaterial = new THREE.MeshBasicMaterial({ color: 0x8B0000 }); // Dark red
+    const chimney = new THREE.Mesh(chimneyGeometry, chimneyMaterial);
+    chimney.position.set(bodyWidth/4, bodyHeight + roofHeight/2 + chimneyHeight/2, 0);
+    houseGroup.add(chimney);
     
     // Add a small yard/garden
     const yardSize = 0.8;
@@ -2324,6 +2333,52 @@ function createCommercialBuilding() {
             }
         }
     });
+
+    // Add a roof structure
+    const roofGeometry = new THREE.BoxGeometry(buildingWidth + 0.1, 0.05, buildingDepth + 0.1);
+    const roofMaterial = new THREE.MeshBasicMaterial({ color: 0x333333 }); // Dark gray
+    const roof = new THREE.Mesh(roofGeometry, roofMaterial);
+    roof.position.y = buildingHeight + 0.025;
+    buildingGroup.add(roof);
+    
+    // Add roof details (like AC units, water towers, etc.)
+    if (Math.random() < 0.7) { // 70% chance to have roof details
+        // AC unit or mechanical equipment
+        const acUnitGeometry = new THREE.BoxGeometry(0.2, 0.1, 0.2);
+        const acUnitMaterial = new THREE.MeshBasicMaterial({ color: 0x555555 });
+        const acUnit = new THREE.Mesh(acUnitGeometry, acUnitMaterial);
+        acUnit.position.set(
+            (Math.random() - 0.5) * (buildingWidth/2),
+            buildingHeight + 0.1,
+            (Math.random() - 0.5) * (buildingDepth/2)
+        );
+        buildingGroup.add(acUnit);
+        
+        // Maybe add a water tower for taller buildings
+        if (buildingHeight > 2 && Math.random() < 0.4) {
+            const towerBaseGeometry = new THREE.CylinderGeometry(0.05, 0.05, 0.15, 8);
+            const towerTopGeometry = new THREE.CylinderGeometry(0.08, 0.08, 0.1, 8);
+            const towerMaterial = new THREE.MeshBasicMaterial({ color: 0x888888 });
+            
+            const towerBase = new THREE.Mesh(towerBaseGeometry, towerMaterial);
+            const towerTop = new THREE.Mesh(towerTopGeometry, towerMaterial);
+            
+            towerBase.position.set(
+                -buildingWidth/4,
+                buildingHeight + 0.075,
+                buildingDepth/4
+            );
+            
+            towerTop.position.set(
+                -buildingWidth/4,
+                buildingHeight + 0.2,
+                buildingDepth/4
+            );
+            
+            buildingGroup.add(towerBase);
+            buildingGroup.add(towerTop);
+        }
+    }
     
     return buildingGroup;
 }
