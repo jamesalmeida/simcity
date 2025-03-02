@@ -2066,31 +2066,35 @@ function placeBuilding(type, x, z, forcedRotation, skipUndoStack = false) {
         });
     }
     
-    let buildingGeometry, buildingMaterial;
+    let building;
     
     switch (type) {
         case 'residential':
-            // Create residential building (red)
-            buildingGeometry = new THREE.BoxGeometry(0.8, 1 + Math.random() * 0.5, 0.8);
-            buildingMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+            // Create residential building (house-like structure)
+            building = createHouseBuilding();
             numResidential++;
             break;
         case 'commercial':
             // Create commercial building (blue)
-            buildingGeometry = new THREE.BoxGeometry(0.8, 1.5 + Math.random() * 1, 0.8);
-            buildingMaterial = new THREE.MeshBasicMaterial({ color: 0x0000ff });
+            const commercialGeometry = new THREE.BoxGeometry(0.8, 1.5 + Math.random() * 1, 0.8);
+            const commercialMaterial = new THREE.MeshBasicMaterial({ color: 0x0000ff });
+            building = new THREE.Mesh(commercialGeometry, commercialMaterial);
+            building.position.y = building.geometry.parameters.height / 2;
             numCommercial++;
             break;
         case 'industrial':
             // Create industrial building (yellow)
-            buildingGeometry = new THREE.BoxGeometry(0.8, 0.8 + Math.random() * 0.4, 0.8);
-            buildingMaterial = new THREE.MeshBasicMaterial({ color: 0xffff00 });
+            const industrialGeometry = new THREE.BoxGeometry(0.8, 0.8 + Math.random() * 0.4, 0.8);
+            const industrialMaterial = new THREE.MeshBasicMaterial({ color: 0xffff00 });
+            building = new THREE.Mesh(industrialGeometry, industrialMaterial);
+            building.position.y = building.geometry.parameters.height / 2;
             numIndustrial++;
             break;
     }
     
-    const building = new THREE.Mesh(buildingGeometry, buildingMaterial);
-    building.position.set(x + 0.5, building.geometry.parameters.height / 2, z + 0.5);
+    // Set position
+    building.position.x = x + 0.5;
+    building.position.z = z + 0.5;
     
     // Apply rotation
     building.rotation.y = (Math.PI / 2) * rotation;
@@ -2101,4 +2105,102 @@ function placeBuilding(type, x, z, forcedRotation, skipUndoStack = false) {
     
     scene.add(building);
     cityGrid.set(key, building);
+}
+
+// Function to create a house-shaped residential building
+function createHouseBuilding() {
+    // Create a group to hold all parts of the house
+    const houseGroup = new THREE.Group();
+    
+    // House colors
+    const wallColor = 0xF5F5DC; // Beige
+    const roofColor = 0x8B4513; // Brown
+    const doorColor = 0x8B4513; // Brown
+    const windowColor = 0xADD8E6; // Light blue
+    
+    // Main house body
+    const bodyWidth = 0.7;
+    const bodyHeight = 0.5;
+    const bodyDepth = 0.6;
+    const bodyGeometry = new THREE.BoxGeometry(bodyWidth, bodyHeight, bodyDepth);
+    const bodyMaterial = new THREE.MeshBasicMaterial({ color: wallColor });
+    const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+    body.position.y = bodyHeight / 2;
+    houseGroup.add(body);
+    
+    // Roof (triangular prism)
+    const roofHeight = 0.4;
+    const roofShape = new THREE.Shape();
+    roofShape.moveTo(-bodyWidth/2, 0);
+    roofShape.lineTo(0, roofHeight);
+    roofShape.lineTo(bodyWidth/2, 0);
+    roofShape.lineTo(-bodyWidth/2, 0);
+    
+    const extrudeSettings = {
+        steps: 1,
+        depth: bodyDepth,
+        bevelEnabled: false
+    };
+    
+    const roofGeometry = new THREE.ExtrudeGeometry(roofShape, extrudeSettings);
+    const roofMaterial = new THREE.MeshBasicMaterial({ color: roofColor });
+    const roof = new THREE.Mesh(roofGeometry, roofMaterial);
+    roof.position.y = bodyHeight;
+    roof.position.z = -bodyDepth/2;
+    // roof.rotation.x = Math.PI / 4;
+    houseGroup.add(roof);
+    
+    // Door
+    const doorWidth = 0.15;
+    const doorHeight = 0.3;
+    const doorGeometry = new THREE.PlaneGeometry(doorWidth, doorHeight);
+    const doorMaterial = new THREE.MeshBasicMaterial({ color: doorColor, side: THREE.DoubleSide });
+    const door = new THREE.Mesh(doorGeometry, doorMaterial);
+    door.position.set(0, doorHeight/2, bodyDepth/2 + 0.001);
+    houseGroup.add(door);
+    
+    // Windows
+    const windowSize = 0.12;
+    const windowGeometry = new THREE.PlaneGeometry(windowSize, windowSize);
+    const windowMaterial = new THREE.MeshBasicMaterial({ color: windowColor, side: THREE.DoubleSide });
+    
+    // Front windows
+    const frontWindow1 = new THREE.Mesh(windowGeometry, windowMaterial);
+    frontWindow1.position.set(-bodyWidth/4, bodyHeight/2, bodyDepth/2 + 0.001);
+    houseGroup.add(frontWindow1);
+    
+    const frontWindow2 = new THREE.Mesh(windowGeometry, windowMaterial);
+    frontWindow2.position.set(bodyWidth/4, bodyHeight/2, bodyDepth/2 + 0.001);
+    houseGroup.add(frontWindow2);
+    
+    // Side windows
+    const sideWindow1 = new THREE.Mesh(windowGeometry, windowMaterial);
+    sideWindow1.position.set(bodyWidth/2 + 0.001, bodyHeight/2, 0);
+    sideWindow1.rotation.y = Math.PI / 2;
+    houseGroup.add(sideWindow1);
+    
+    const sideWindow2 = new THREE.Mesh(windowGeometry, windowMaterial);
+    sideWindow2.position.set(-bodyWidth/2 - 0.001, bodyHeight/2, 0);
+    sideWindow2.rotation.y = Math.PI / 2;
+    houseGroup.add(sideWindow2);
+    
+    // Add a small chimney
+    const chimneyWidth = 0.1;
+    const chimneyHeight = 0.2;
+    const chimneyGeometry = new THREE.BoxGeometry(chimneyWidth, chimneyHeight, chimneyWidth);
+    const chimneyMaterial = new THREE.MeshBasicMaterial({ color: 0x8B0000 }); // Dark red
+    const chimney = new THREE.Mesh(chimneyGeometry, chimneyMaterial);
+    chimney.position.set(bodyWidth/4, bodyHeight + roofHeight/2 + chimneyHeight/2, 0);
+    houseGroup.add(chimney);
+    
+    // Add a small yard/garden
+    const yardSize = 0.8;
+    const yardHeight = 0.01;
+    const yardGeometry = new THREE.BoxGeometry(yardSize, yardHeight, yardSize);
+    const yardMaterial = new THREE.MeshBasicMaterial({ color: 0x7CFC00 }); // Lawn green
+    const yard = new THREE.Mesh(yardGeometry, yardMaterial);
+    yard.position.y = -yardHeight/2;
+    houseGroup.add(yard);
+    
+    return houseGroup;
 }
