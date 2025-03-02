@@ -2075,11 +2075,8 @@ function placeBuilding(type, x, z, forcedRotation, skipUndoStack = false) {
             numResidential++;
             break;
         case 'commercial':
-            // Create commercial building (blue)
-            const commercialGeometry = new THREE.BoxGeometry(0.8, 1.5 + Math.random() * 1, 0.8);
-            const commercialMaterial = new THREE.MeshBasicMaterial({ color: 0x0000ff });
-            building = new THREE.Mesh(commercialGeometry, commercialMaterial);
-            building.position.y = building.geometry.parameters.height / 2;
+            // Create commercial building (office-like with windows)
+            building = createCommercialBuilding();
             numCommercial++;
             break;
         case 'industrial':
@@ -2203,4 +2200,128 @@ function createHouseBuilding() {
     houseGroup.add(yard);
     
     return houseGroup;
+}
+
+// Function to create a commercial building with windows
+function createCommercialBuilding() {
+    // Create a group to hold all parts of the building
+    const buildingGroup = new THREE.Group();
+    
+    // Random building height (taller than residential)
+    const buildingHeight = 1.5 + Math.random() * 1.5;
+    
+    // Random shade of gray for the building
+    const grayValue = Math.floor(100 + Math.random() * 100); // Values between 100-200 (medium to light gray)
+    const buildingColor = new THREE.Color(`rgb(${grayValue},${grayValue},${grayValue})`);
+    
+    // Building dimensions
+    const buildingWidth = 0.7;
+    const buildingDepth = 0.7;
+    
+    // Main building body
+    const bodyGeometry = new THREE.BoxGeometry(buildingWidth, buildingHeight, buildingDepth);
+    const bodyMaterial = new THREE.MeshBasicMaterial({ color: buildingColor });
+    const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+    body.position.y = buildingHeight / 2;
+    buildingGroup.add(body);
+    
+    // Window properties
+    const windowColor = 0xADD8E6; // Light blue
+    const windowRows = Math.max(2, Math.floor(buildingHeight * 2)); // At least 2 rows, more for taller buildings
+    const windowCols = 3; // 3 windows per row
+    const windowWidth = 0.1;
+    const windowHeight = 0.12;
+    const windowDepth = 0.01;
+    const windowSpacingX = buildingWidth / (windowCols + 1);
+    const windowSpacingY = buildingHeight / (windowRows + 1);
+    
+    // Create windows for all four sides
+    const sides = [
+        { name: 'front', rotY: 0, offsetZ: buildingDepth/2 + 0.001 },
+        { name: 'right', rotY: Math.PI/2, offsetX: buildingWidth/2 + 0.001 },
+        { name: 'back', rotY: Math.PI, offsetZ: -buildingDepth/2 - 0.001 },
+        { name: 'left', rotY: -Math.PI/2, offsetX: -buildingWidth/2 - 0.001 }
+    ];
+    
+    sides.forEach(side => {
+        for (let row = 1; row <= windowRows; row++) {
+            for (let col = 1; col <= windowCols; col++) {
+                // Randomly skip some windows (20% chance)
+                if (Math.random() < 0.2) continue;
+                
+                // Randomly make some windows lit (yellow) and others blue
+                const thisWindowColor = Math.random() < 0.3 ? 0xFFFF99 : windowColor;
+                
+                const windowGeometry = new THREE.PlaneGeometry(windowWidth, windowHeight);
+                const windowMaterial = new THREE.MeshBasicMaterial({ 
+                    color: thisWindowColor, 
+                    side: THREE.DoubleSide 
+                });
+                
+                const window = new THREE.Mesh(windowGeometry, windowMaterial);
+                
+                // Position the window
+                const xPos = -buildingWidth/2 + col * windowSpacingX;
+                const yPos = row * windowSpacingY;
+                
+                if (side.name === 'front' || side.name === 'back') {
+                    window.position.set(xPos, yPos, side.offsetZ);
+                    window.rotation.y = side.rotY;
+                } else {
+                    window.position.set(side.offsetX, yPos, -buildingDepth/2 + col * windowSpacingX);
+                    window.rotation.y = side.rotY;
+                }
+                
+                buildingGroup.add(window);
+            }
+        }
+    });
+    
+    // Add a roof structure
+    const roofGeometry = new THREE.BoxGeometry(buildingWidth + 0.1, 0.05, buildingDepth + 0.1);
+    const roofMaterial = new THREE.MeshBasicMaterial({ color: 0x333333 }); // Dark gray
+    const roof = new THREE.Mesh(roofGeometry, roofMaterial);
+    roof.position.y = buildingHeight + 0.025;
+    buildingGroup.add(roof);
+    
+    // Add roof details (like AC units, water towers, etc.)
+    if (Math.random() < 0.7) { // 70% chance to have roof details
+        // AC unit or mechanical equipment
+        const acUnitGeometry = new THREE.BoxGeometry(0.2, 0.1, 0.2);
+        const acUnitMaterial = new THREE.MeshBasicMaterial({ color: 0x555555 });
+        const acUnit = new THREE.Mesh(acUnitGeometry, acUnitMaterial);
+        acUnit.position.set(
+            (Math.random() - 0.5) * (buildingWidth/2),
+            buildingHeight + 0.1,
+            (Math.random() - 0.5) * (buildingDepth/2)
+        );
+        buildingGroup.add(acUnit);
+        
+        // Maybe add a water tower for taller buildings
+        if (buildingHeight > 2 && Math.random() < 0.4) {
+            const towerBaseGeometry = new THREE.CylinderGeometry(0.05, 0.05, 0.15, 8);
+            const towerTopGeometry = new THREE.CylinderGeometry(0.08, 0.08, 0.1, 8);
+            const towerMaterial = new THREE.MeshBasicMaterial({ color: 0x888888 });
+            
+            const towerBase = new THREE.Mesh(towerBaseGeometry, towerMaterial);
+            const towerTop = new THREE.Mesh(towerTopGeometry, towerMaterial);
+            
+            towerBase.position.set(
+                -buildingWidth/4,
+                buildingHeight + 0.075,
+                buildingDepth/4
+            );
+            
+            towerTop.position.set(
+                -buildingWidth/4,
+                buildingHeight + 0.2,
+                buildingDepth/4
+            );
+            
+            buildingGroup.add(towerBase);
+            buildingGroup.add(towerTop);
+        }
+    }
+    
+    return buildingGroup;
 }
