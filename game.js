@@ -28,6 +28,9 @@ function addToUndoStack(action) {
         undoStack.shift(); // Remove oldest item
     }
     console.log(`Added to undo stack. Stack size: ${undoStack.length}`);
+    
+    // Set flag to indicate changes have been made
+    hasUnsavedChanges = true;
 }
 
 // Function to undo the last action
@@ -407,6 +410,9 @@ function completeSaveWithCityInfo() {
         loadModal.style.display = 'block';
         populateSavedCitiesList(); // Refresh the list
     }
+    
+    // Reset the unsaved changes flag
+    hasUnsavedChanges = false;
 }
 
 // Save game state to localStorage
@@ -465,6 +471,9 @@ function saveGameState() {
             
             // Update auto-save ID to the most recent save
             localStorage.setItem('simcity_autosave_id', currentCityId);
+            
+            // Reset the unsaved changes flag
+            hasUnsavedChanges = false;
             
             // Hide loading spinner
             loadingSpinner.classList.add('hidden');
@@ -721,11 +730,16 @@ let autoSaveTimer;
 let defaultCityName = 'Auto-saved City';
 let defaultCityDescription = 'This city was automatically saved.';
 
+// Flag to track if changes have been made since last save
+let hasUnsavedChanges = false;
+
 function startAutoSave() {
     autoSaveTimer = setInterval(() => {
-        if (autoSaveCheckbox.checked) {
+        if (autoSaveCheckbox.checked && hasUnsavedChanges) {
             // Auto-save without showing the form
             autoSaveGameState();
+            // Reset the flag after saving
+            hasUnsavedChanges = false;
         }
     }, AUTO_SAVE_INTERVAL);
 }
