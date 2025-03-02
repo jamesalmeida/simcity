@@ -532,10 +532,10 @@ function loadGameState(saveId) {
             roadGrid.clear();
             
             // Reset counters
-            numResidential = data.stats.numResidential;
-            numCommercial = data.stats.numCommercial;
-            numIndustrial = data.stats.numIndustrial;
-            population = data.stats.population;
+            numResidential = data.stats.numResidential || 0;
+            numCommercial = data.stats.numCommercial || 0;
+            numIndustrial = data.stats.numIndustrial || 0;
+            population = data.stats.population || 0;
             
             // Rebuild roads first (so buildings detect them correctly)
             data.roads.forEach(roadData => {
@@ -547,9 +547,30 @@ function loadGameState(saveId) {
             });
             
             // Rebuild buildings
-            data.buildings.forEach(buildingData => {
-                placeBuilding(buildingData.type, buildingData.x, buildingData.z, buildingData.rotation);
-            });
+            if (data.buildings && Array.isArray(data.buildings)) {
+                
+                // Filter and sanitize building data
+                const sanitizedBuildings = data.buildings
+                    .map(buildingData => sanitizeBuildingData(buildingData))
+                    .filter(building => building !== null);
+                
+                
+                sanitizedBuildings.forEach((buildingData, index) => {
+                    const building = placeBuilding(buildingData.type, buildingData.x, buildingData.z, buildingData.rotation, true);
+                    if (building) {
+                        if (building.type === 'residential' || building.type === 'commercial') {
+                        }
+                    } else {
+                        console.error(`[DEBUG] Failed to place ${buildingData.type} building at ${buildingData.x},${buildingData.z}`);
+                    }
+                });
+                
+                
+                // Ensure all buildings are visible with proper materials
+                ensureBuildingVisibility();
+            } else {
+                console.error('[DEBUG] No buildings data or invalid format:', data.buildings);
+            }
             
             // Update UI
             document.getElementById('population-display').textContent = `Population: ${Math.floor(population)}`;
@@ -568,6 +589,33 @@ function loadGameState(saveId) {
                     stopAutoSave();
                 }
             }
+            
+            // Reset camera position to ensure buildings are visible
+            // Find the center of the city based on buildings
+            if (data.buildings && data.buildings.length > 0) {
+                let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
+                
+                data.buildings.forEach(building => {
+                    minX = Math.min(minX, building.x);
+                    maxX = Math.max(maxX, building.x);
+                    minZ = Math.min(minZ, building.z);
+                    maxZ = Math.max(maxZ, building.z);
+                });
+                
+                // Calculate center and size of city
+                const centerX = (minX + maxX) / 2;
+                const centerZ = (minZ + maxZ) / 2;
+                const sizeX = Math.max(10, maxX - minX + 10); // Add padding
+                const sizeZ = Math.max(10, maxZ - minZ + 10); // Add padding
+                
+                // Position camera to view the entire city
+                const distance = Math.max(sizeX, sizeZ) * 1.5;
+                camera.position.set(centerX + distance, distance, centerZ + distance);
+                camera.lookAt(centerX, 0, centerZ);
+            }
+            
+            // Force a scene update
+            renderer.render(scene, camera);
             
             // Hide loading spinner
             loadingSpinner.classList.add('hidden');
@@ -2042,18 +2090,25 @@ for (const type in RoadType) {
 // Function to place buildings
 function placeBuilding(type, x, z, forcedRotation, skipUndoStack = false) {
     if (x < -49 || x >= 49 || z < -49 || z >= 49) {
-        console.log('Out of bounds');
         return;
     }
     
     const key = `${x}_${z}`;
     if (cityGrid.has(key)) {
-        console.log('Building already exists here');
         return;
     }
     
     // Use forced rotation if provided (for loading saved games)
-    const rotation = forcedRotation !== undefined ? forcedRotation : currentRotation;
+    // Handle both number and object formats for rotation
+    let rotation = currentRotation;
+    if (forcedRotation !== undefined) {
+        if (typeof forcedRotation === 'number') {
+            rotation = forcedRotation;
+        } else if (typeof forcedRotation === 'object' && forcedRotation !== null) {
+            // If it's an object (from older save format), convert to number
+            rotation = 0; // Default to 0 if can't determine
+        }
+    }
     
     // Add to undo stack before placing
     if (!skipUndoStack) {
@@ -2100,8 +2155,12 @@ function placeBuilding(type, x, z, forcedRotation, skipUndoStack = false) {
     building.type = type;
     building.rotation = rotation;
     
+    // Ensure the building is added to the scene
     scene.add(building);
+    
     cityGrid.set(key, building);
+    
+    return building;
 }
 
 // Function to create a house-shaped residential building
@@ -2170,6 +2229,15 @@ function createHouseBuilding() {
     frontWindow2.position.set(bodyWidth/4, bodyHeight/2, bodyDepth/2 + 0.001);
     houseGroup.add(frontWindow2);
     
+    // Back windows
+    const backWindow1 = new THREE.Mesh(windowGeometry, windowMaterial);
+    backWindow1.position.set(-bodyWidth/4, bodyHeight/2, -bodyDepth/2 - 0.001);
+    houseGroup.add(backWindow1);
+    
+    const backWindow2 = new THREE.Mesh(windowGeometry, windowMaterial);
+    backWindow2.position.set(bodyWidth/4, bodyHeight/2, -bodyDepth/2 - 0.001);
+    houseGroup.add(backWindow2);
+    
     // Side windows
     const sideWindow1 = new THREE.Mesh(windowGeometry, windowMaterial);
     sideWindow1.position.set(bodyWidth/2 + 0.001, bodyHeight/2, 0);
@@ -2181,22 +2249,13 @@ function createHouseBuilding() {
     sideWindow2.rotation.y = Math.PI / 2;
     houseGroup.add(sideWindow2);
     
-    // Add a small chimney
-    const chimneyWidth = 0.1;
-    const chimneyHeight = 0.2;
-    const chimneyGeometry = new THREE.BoxGeometry(chimneyWidth, chimneyHeight, chimneyWidth);
-    const chimneyMaterial = new THREE.MeshBasicMaterial({ color: 0x8B0000 }); // Dark red
-    const chimney = new THREE.Mesh(chimneyGeometry, chimneyMaterial);
-    chimney.position.set(bodyWidth/4, bodyHeight + roofHeight/2 + chimneyHeight/2, 0);
-    houseGroup.add(chimney);
-    
     // Add a small yard/garden
     const yardSize = 0.8;
-    const yardHeight = 0.01;
-    const yardGeometry = new THREE.BoxGeometry(yardSize, yardHeight, yardSize);
-    const yardMaterial = new THREE.MeshBasicMaterial({ color: 0x7CFC00 }); // Lawn green
+    const yardGeometry = new THREE.PlaneGeometry(yardSize, yardSize);
+    const yardMaterial = new THREE.MeshBasicMaterial({ color: 0x7CFC00, side: THREE.DoubleSide }); // Light green
     const yard = new THREE.Mesh(yardGeometry, yardMaterial);
-    yard.position.y = -yardHeight/2;
+    yard.position.set(0, 0.001, 0); // Just above ground
+    yard.rotation.x = -Math.PI / 2; // Flat on ground
     houseGroup.add(yard);
     
     return houseGroup;
@@ -2249,79 +2308,99 @@ function createCommercialBuilding() {
                 // Randomly skip some windows (20% chance)
                 if (Math.random() < 0.2) continue;
                 
-                // Randomly make some windows lit (yellow) and others blue
-                const thisWindowColor = Math.random() < 0.3 ? 0xFFFF99 : windowColor;
-                
                 const windowGeometry = new THREE.PlaneGeometry(windowWidth, windowHeight);
-                const windowMaterial = new THREE.MeshBasicMaterial({ 
-                    color: thisWindowColor, 
-                    side: THREE.DoubleSide 
-                });
-                
+                const windowMaterial = new THREE.MeshBasicMaterial({ color: windowColor, side: THREE.DoubleSide });
                 const window = new THREE.Mesh(windowGeometry, windowMaterial);
                 
-                // Position the window
-                const xPos = -buildingWidth/2 + col * windowSpacingX;
-                const yPos = row * windowSpacingY;
+                // Position window
+                const x = side.offsetX !== undefined ? side.offsetX : (-buildingWidth/2 + col * windowSpacingX);
+                const y = row * windowSpacingY;
+                const z = side.offsetZ !== undefined ? side.offsetZ : (-buildingDepth/2 + col * windowSpacingX);
                 
-                if (side.name === 'front' || side.name === 'back') {
-                    window.position.set(xPos, yPos, side.offsetZ);
-                    window.rotation.y = side.rotY;
-                } else {
-                    window.position.set(side.offsetX, yPos, -buildingDepth/2 + col * windowSpacingX);
-                    window.rotation.y = side.rotY;
-                }
+                window.position.set(x, y, z);
+                window.rotation.y = side.rotY;
                 
                 buildingGroup.add(window);
             }
         }
     });
     
-    // Add a roof structure
-    const roofGeometry = new THREE.BoxGeometry(buildingWidth + 0.1, 0.05, buildingDepth + 0.1);
-    const roofMaterial = new THREE.MeshBasicMaterial({ color: 0x333333 }); // Dark gray
-    const roof = new THREE.Mesh(roofGeometry, roofMaterial);
-    roof.position.y = buildingHeight + 0.025;
-    buildingGroup.add(roof);
-    
-    // Add roof details (like AC units, water towers, etc.)
-    if (Math.random() < 0.7) { // 70% chance to have roof details
-        // AC unit or mechanical equipment
-        const acUnitGeometry = new THREE.BoxGeometry(0.2, 0.1, 0.2);
-        const acUnitMaterial = new THREE.MeshBasicMaterial({ color: 0x555555 });
-        const acUnit = new THREE.Mesh(acUnitGeometry, acUnitMaterial);
-        acUnit.position.set(
-            (Math.random() - 0.5) * (buildingWidth/2),
-            buildingHeight + 0.1,
-            (Math.random() - 0.5) * (buildingDepth/2)
-        );
-        buildingGroup.add(acUnit);
+    return buildingGroup;
+}
+
+// Function to ensure all building materials are properly set up
+function ensureBuildingVisibility() {
+    cityGrid.forEach((building, key) => {
+        // Make sure the building is visible
+        building.visible = true;
         
-        // Maybe add a water tower for taller buildings
-        if (buildingHeight > 2 && Math.random() < 0.4) {
-            const towerBaseGeometry = new THREE.CylinderGeometry(0.05, 0.05, 0.15, 8);
-            const towerTopGeometry = new THREE.CylinderGeometry(0.08, 0.08, 0.1, 8);
-            const towerMaterial = new THREE.MeshBasicMaterial({ color: 0x888888 });
-            
-            const towerBase = new THREE.Mesh(towerBaseGeometry, towerMaterial);
-            const towerTop = new THREE.Mesh(towerTopGeometry, towerMaterial);
-            
-            towerBase.position.set(
-                -buildingWidth/4,
-                buildingHeight + 0.075,
-                buildingDepth/4
-            );
-            
-            towerTop.position.set(
-                -buildingWidth/4,
-                buildingHeight + 0.2,
-                buildingDepth/4
-            );
-            
-            buildingGroup.add(towerBase);
-            buildingGroup.add(towerTop);
+        // If it's a group (residential or commercial), ensure all children are visible
+        if (building.type === 'Group') {
+            building.traverse(child => {
+                if (child.isMesh) {
+                    child.visible = true;
+                    
+                    // Ensure material is properly set
+                    if (child.material) {
+                        // If material is an array, process each material
+                        if (Array.isArray(child.material)) {
+                            child.material.forEach(mat => {
+                                mat.needsUpdate = true;
+                                mat.transparent = false;
+                                mat.opacity = 1.0;
+                            });
+                        } else {
+                            // Single material
+                            child.material.needsUpdate = true;
+                            child.material.transparent = false;
+                            child.material.opacity = 1.0;
+                        }
+                    }
+                }
+            });
+        } else if (building.isMesh) {
+            // For simple meshes (industrial buildings)
+            if (building.material) {
+                building.material.needsUpdate = true;
+                building.material.transparent = false;
+                building.material.opacity = 1.0;
+            }
+        }
+    });
+}
+
+// Function to sanitize building data before loading
+function sanitizeBuildingData(buildingData) {
+    if (!buildingData) return null;
+    
+    // Ensure required properties exist
+    if (buildingData.x === undefined || buildingData.z === undefined || !buildingData.type) {
+        console.error('[DEBUG] Invalid building data missing required properties:', buildingData);
+        return null;
+    }
+    
+    // Ensure type is valid
+    if (!['residential', 'commercial', 'industrial'].includes(buildingData.type)) {
+        console.error('[DEBUG] Invalid building type:', buildingData.type);
+        return null;
+    }
+    
+    // Normalize rotation to a number
+    let rotation = 0;
+    if (buildingData.rotation !== undefined) {
+        if (typeof buildingData.rotation === 'number') {
+            rotation = buildingData.rotation;
+        } else if (typeof buildingData.rotation === 'object' && buildingData.rotation !== null) {
+            // Try to extract rotation from object if possible
+            rotation = 0; // Default
         }
     }
     
-    return buildingGroup;
+    // Return sanitized building data
+    return {
+        x: Number(buildingData.x),
+        z: Number(buildingData.z),
+        type: buildingData.type,
+        rotation: rotation
+    };
 }
