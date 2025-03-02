@@ -1266,9 +1266,10 @@ function createRoadGroup(roadType) {
             innerSidewalk2.position.set(0.05, 0, -0.45);
         }
         
-        roadGroup.add(outerSidewalk1);
-        roadGroup.add(outerSidewalk2);
-        roadGroup.add(innerSidewalk1);
+        // something is wrong with the sidewalks here
+        // roadGroup.add(outerSidewalk1);
+        // roadGroup.add(outerSidewalk2);
+        // roadGroup.add(innerSidewalk1);
         roadGroup.add(innerSidewalk2);
     };
     
