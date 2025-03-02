@@ -300,73 +300,65 @@ CityBuilder.assets = {
     };
     
     const createCorner = (ne, nw, se, sw) => {
-        // Create the corner road piece - we'll use a curved shape
+        // Create a custom geometry for the corner road piece with a rounded corner
         const roadWidth = 0.8;
         const sideLength = 1.0;
         
-        // Create the basic road surface as a plane
-        const roadGeometry = new THREE.PlaneGeometry(sideLength, sideLength);
+        // Create a custom shape with a rounded corner
+        const shape = new THREE.Shape();
+        
+        // Determine which corner to round based on parameters
+        if (sw) {
+            // Southwest corner - round the southwest corner
+            shape.moveTo(-0.5, -0.5);  // Bottom-left
+            shape.lineTo(0.5, -0.5);   // Bottom-right
+            shape.lineTo(0.5, 0.0);    // Start of curve
+            
+            // Add a quadratic curve for the rounded corner
+            shape.quadraticCurveTo(0.5, 0.5, 0.0, 0.5);
+            
+            shape.lineTo(-0.5, 0.5);   // Top-left
+            shape.lineTo(-0.5, -0.5);  // Back to start
+        } else if (se) {
+            // Southeast corner - round the southeast corner
+            shape.moveTo(0.5, -0.5);   // Bottom-right
+            shape.lineTo(-0.5, -0.5);  // Bottom-left
+            shape.lineTo(-0.5, 0.0);   // Start of curve
+            
+            // Add a quadratic curve for the rounded corner
+            shape.quadraticCurveTo(-0.5, 0.5, 0.0, 0.5);
+            
+            shape.lineTo(0.5, 0.5);    // Top-right
+            shape.lineTo(0.5, -0.5);   // Back to start
+        } else if (nw) {
+            // Northwest corner - round the northwest corner
+            shape.moveTo(-0.5, 0.5);   // Top-left
+            shape.lineTo(0.5, 0.5);    // Top-right
+            shape.lineTo(0.5, 0.0);    // Start of curve
+            
+            // Add a quadratic curve for the rounded corner
+            shape.quadraticCurveTo(0.5, -0.5, 0.0, -0.5);
+            
+            shape.lineTo(-0.5, -0.5);  // Bottom-left
+            shape.lineTo(-0.5, 0.5);   // Back to start
+        } else if (ne) {
+            // Northeast corner - round the northeast corner
+            shape.moveTo(0.5, 0.5);    // Top-right
+            shape.lineTo(-0.5, 0.5);   // Top-left
+            shape.lineTo(-0.5, 0.0);   // Start of curve
+            
+            // Add a quadratic curve for the rounded corner
+            shape.quadraticCurveTo(-0.5, -0.5, 0.0, -0.5);
+            
+            shape.lineTo(0.5, -0.5);   // Bottom-right
+            shape.lineTo(0.5, 0.5);    // Back to start
+        }
+        
+        // Create geometry from the shape
+        const roadGeometry = new THREE.ShapeGeometry(shape);
         const road = new THREE.Mesh(roadGeometry, roadMaterial);
         road.rotation.x = -Math.PI / 2; // Rotate to be flat on the ground
         roadGroup.add(road);
-        
-        // Determine curve parameters based on which corner we're creating
-        let startAngle, endAngle, clockwise;
-        let curveOffsetX = 0, curveOffsetZ = 0;
-        
-        if (ne) {
-            // Northeast corner - cars going from North to East or East to North
-            startAngle = Math.PI;
-            endAngle = Math.PI * 1.5;
-            clockwise = false;
-            curveOffsetX = 0.5;
-            curveOffsetZ = -0.5;
-        } else if (nw) {
-            // Northwest corner - cars going from North to West or West to North
-            startAngle = Math.PI * 1.5;
-            endAngle = Math.PI * 2;
-            clockwise = false;
-            curveOffsetX = -0.5;
-            curveOffsetZ = -0.5;
-        } else if (se) {
-            // Southeast corner - cars going from South to East or East to South
-            startAngle = Math.PI * 0.5;
-            endAngle = Math.PI;
-            clockwise = false;
-            curveOffsetX = 0.5;
-            curveOffsetZ = 0.5;
-        } else if (sw) {
-            // Southwest corner - cars going from South to West or West to South
-            startAngle = 0;
-            endAngle = Math.PI * 0.5;
-            clockwise = false;
-            curveOffsetX = -0.5;
-            curveOffsetZ = 0.5;
-        }
-        
-        // Create curved lane divider following the proper direction
-        const curve = new THREE.EllipseCurve(
-            curveOffsetX, curveOffsetZ,  // Center x, y
-            0.4, 0.4,                    // x radius, y radius - smaller to keep points within grid square
-            startAngle, endAngle,        // Start angle, end angle
-            clockwise,                   // Clockwise
-            0                            // Rotation
-        );
-        
-        const points = curve.getPoints(12);
-        
-        // Create a series of small boxes along the curve to represent the dotted line
-        for (let i = 1; i < points.length - 1; i += 2) {
-            const dotGeometry = new THREE.BoxGeometry(0.05, 0.015, 0.05);
-            const dot = new THREE.Mesh(dotGeometry, laneLineMaterial);
-            
-            // Position the dot at the curve point - clamp coordinates to stay within the grid square
-            let x = Math.max(-0.5, Math.min(0.5, points[i].x));
-            let z = Math.max(-0.5, Math.min(0.5, points[i].y));
-            dot.position.set(x, 0.002, z);
-            
-            roadGroup.add(dot);
-        }
         
         // Add appropriate corner sidewalks - we need two L-shaped sidewalks
         // For simplicity, we'll use multiple box geometries
