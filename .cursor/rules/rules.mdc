@@ -1,3 +1,8 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
 1. **Verify Information**: Always verify information before presenting it. Do not make assumptions or speculate without clear evidence.
 2. **File-by-File Changes**: Make changes file by file and give me a chance to spot mistakes.
 3. **No Apologies**: Never use apologies.
