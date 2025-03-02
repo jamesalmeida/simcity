@@ -1339,9 +1339,11 @@ function createRoadGroup(roadType) {
             // Add east-west crosswalks
             const eastCrosswalk = createCrosswalk(false);
             eastCrosswalk.position.set(0.45, 0.001, 0);
+            eastCrosswalk.rotation.y = Math.PI / 2;  // Add rotation
             
             const westCrosswalk = createCrosswalk(false);
             westCrosswalk.position.set(-0.45, 0.001, 0);
+            westCrosswalk.rotation.y = Math.PI / 2;  // Add rotation
             
             roadGroup.add(eastCrosswalk);
             roadGroup.add(westCrosswalk);
@@ -1349,6 +1351,7 @@ function createRoadGroup(roadType) {
             // Add south crosswalk
             const southCrosswalk = createCrosswalk(true);
             southCrosswalk.position.set(0, 0.001, 0.45);
+            southCrosswalk.rotation.y = Math.PI / 2;  // Add rotation
             roadGroup.add(southCrosswalk);
             
         } else if (closedSide === 'east') {
@@ -1379,16 +1382,20 @@ function createRoadGroup(roadType) {
             // Add north-south crosswalks
             const northCrosswalk = createCrosswalk(true);
             northCrosswalk.position.set(0, 0.001, -0.45);
+            northCrosswalk.rotation.y = Math.PI / 2;
             
             const southCrosswalk = createCrosswalk(true);
             southCrosswalk.position.set(0, 0.001, 0.45);
-            
+            southCrosswalk.rotation.y = Math.PI / 2;
+
             roadGroup.add(northCrosswalk);
             roadGroup.add(southCrosswalk);
             
             // Add west crosswalk
             const westCrosswalk = createCrosswalk(false);
             westCrosswalk.position.set(-0.45, 0.001, 0);
+            westCrosswalk.rotation.y = Math.PI / 2;
+            
             roadGroup.add(westCrosswalk);
             
         } else if (closedSide === 'south') {
@@ -1525,7 +1532,7 @@ function createRoadGroup(roadType) {
         return crosswalkGroup;
     };
     
-    const createCrossroad = () => {
+    const create4WayIntersection = () => {
         // Create the basic road surface
         const roadGeometry = new THREE.PlaneGeometry(1.0, 1.0);
         const road = new THREE.Mesh(roadGeometry, roadMaterial);
@@ -1588,15 +1595,19 @@ function createRoadGroup(roadType) {
         // Add crosswalks in all four directions
         const northCrosswalk = createCrosswalk(true);
         northCrosswalk.position.set(0, 0.001, -0.45);
+        northCrosswalk.rotation.y = Math.PI / 2;
         
         const eastCrosswalk = createCrosswalk(false);
         eastCrosswalk.position.set(0.45, 0.001, 0);
+        eastCrosswalk.rotation.y = Math.PI / 2;
         
         const southCrosswalk = createCrosswalk(true);
         southCrosswalk.position.set(0, 0.001, 0.45);
+        southCrosswalk.rotation.y = Math.PI / 2;
         
         const westCrosswalk = createCrosswalk(false);
         westCrosswalk.position.set(-0.45, 0.001, 0);
+        westCrosswalk.rotation.y = Math.PI / 2;
         
         roadGroup.add(northCrosswalk);
         roadGroup.add(eastCrosswalk);
@@ -1637,7 +1648,7 @@ function createRoadGroup(roadType) {
             createTIntersection(false, false, false, true);
             break;
         case RoadType.CROSS:
-            createCrossroad();
+            create4WayIntersection();
             break;
     }
     
