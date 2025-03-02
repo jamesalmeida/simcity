@@ -195,237 +195,103 @@ window.onclick = function(event) {
     }
 };
 
-// Function to generate a unique save ID
-function generateSaveId() {
-    return `simcity_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
-}
-
-// Function to get all saved cities - moved to storage.js
-// ... existing code ...
-
-// Save game state to localStorage
+// Save game state to localStorage - wrapper for storage module
 CityBuilder.game.saveGameState = function() {
-    // Show loading spinner
-    loadingSpinner.classList.remove('hidden');
+    const gameStats = {
+        numResidential,
+        numCommercial,
+        numIndustrial,
+        population
+    };
     
-    setTimeout(() => {
-        // Save buildings
-        const buildingsData = [];
-        cityGrid.forEach((building, key) => {
-            const [x, z] = key.split('_').map(Number);
-            buildingsData.push({
-                x,
-                z,
-                type: building.type,
-                rotation: building.rotation
-            });
-        });
-
-        // Save roads
-        const roadsData = [];
-        roadGrid.forEach((roadInfo, key) => {
-            const [x, z] = key.split('_').map(Number);
-            roadsData.push({
-                x,
-                z,
-                roadType: roadInfo.roadType
-            });
-        });
-
-        // Save game stats
-        const gameStats = {
-            numResidential,
-            numCommercial,
-            numIndustrial,
-            population
-        };
-
-        // Create save data object
-        const saveData = {
-            buildings: buildingsData,
-            roads: roadsData,
-            stats: gameStats,
-            timestamp: new Date().toISOString()
-        };
-
-        // Check if we're saving a previously loaded city
-        if (CityBuilder.game.currentCityId && CityBuilder.game.currentCityName) {
-            // Reuse the existing city ID, name, and description
-            saveData.cityName = CityBuilder.game.currentCityName;
-            saveData.cityDescription = CityBuilder.game.currentCityDescription || '';
-            
-            // Save directly without showing the form
-            localStorage.setItem(CityBuilder.game.currentCityId, JSON.stringify(saveData));
-            
-            // Update auto-save ID to the most recent save
-            localStorage.setItem('simcity_autosave_id', CityBuilder.game.currentCityId);
-            
-            // Reset the unsaved changes flag
-            CityBuilder.game.hasUnsavedChanges = false;
-            
-            // Hide loading spinner
-            loadingSpinner.classList.add('hidden');
-            
-            // Show save notification
-            showNotification(`City "${CityBuilder.game.currentCityName}" saved!`);
-            
-            console.log('Game state saved with ID:', CityBuilder.game.currentCityId);
-        } else {
-            // Generate a new save ID for a new city
-            const saveId = generateSaveId();
-            
-            // Store pending save data
-            CityBuilder.game.pendingSaveData = saveData;
-            CityBuilder.game.pendingSaveId = saveId;
-            
-            // Hide loading spinner
-            loadingSpinner.classList.add('hidden');
-            
-            // Show city info form to get name and description
-            CityBuilder.ui.showCityInfoForm();
-        }
-    }, 100); // Small delay to ensure UI updates
+    CityBuilder.storage.saveGameState(cityGrid, roadGrid, gameStats);
 };
 
-// Load game state from localStorage
+// Load game state from localStorage - wrapper for storage module
 CityBuilder.game.loadGameState = function(saveId) {
-    // Show loading spinner
-    loadingSpinner.classList.remove('hidden');
+    return CityBuilder.storage.loadGameState(saveId);
+};
+
+// Function to process loaded city data
+CityBuilder.game.loadCityData = function(data) {
+    // Clear current city
+    cityGrid.forEach((building, key) => {
+        scene.remove(building);
+    });
+    roadGrid.forEach((roadInfo, key) => {
+        scene.remove(roadInfo.mesh);
+    });
     
-    setTimeout(() => {
-        const savedData = saveId ? 
-            localStorage.getItem(saveId) : 
-            localStorage.getItem(localStorage.getItem('simcity_autosave_id') || '');
+    cityGrid.clear();
+    roadGrid.clear();
+    
+    // Reset counters
+    numResidential = data.stats.numResidential || 0;
+    numCommercial = data.stats.numCommercial || 0;
+    numIndustrial = data.stats.numIndustrial || 0;
+    population = data.stats.population || 0;
+    
+    // Rebuild roads first (so buildings detect them correctly)
+    data.roads.forEach(roadData => {
+        const roadType = roadData.roadType;
+        const roadGroup = createRoadGroup(roadType);
+        roadGroup.position.set(roadData.x + 0.5, 0.005, roadData.z + 0.5);
+        scene.add(roadGroup);
+        roadGrid.set(`${roadData.x}_${roadData.z}`, { mesh: roadGroup, roadType });
+    });
+    
+    // Rebuild buildings
+    if (data.buildings && Array.isArray(data.buildings)) {
+        // Filter and sanitize building data
+        const sanitizedBuildings = data.buildings
+            .map(buildingData => sanitizeBuildingData(buildingData))
+            .filter(building => building !== null);
         
-        if (!savedData) {
-            console.log('No saved game found');
-            showNotification('No saved game found');
-            loadingSpinner.classList.add('hidden');
-            return false;
-        }
-        
-        try {
-            // Parse the saved data
-            const data = JSON.parse(savedData);
-            
-            // Clear current city
-            cityGrid.forEach((building, key) => {
-                scene.remove(building);
-            });
-            roadGrid.forEach((roadInfo, key) => {
-                scene.remove(roadInfo.mesh);
-            });
-            
-            cityGrid.clear();
-            roadGrid.clear();
-            
-            // Reset counters
-            numResidential = data.stats.numResidential || 0;
-            numCommercial = data.stats.numCommercial || 0;
-            numIndustrial = data.stats.numIndustrial || 0;
-            population = data.stats.population || 0;
-            
-            // Rebuild roads first (so buildings detect them correctly)
-            data.roads.forEach(roadData => {
-                const roadType = roadData.roadType;
-                const roadGroup = createRoadGroup(roadType);
-                roadGroup.position.set(roadData.x + 0.5, 0.005, roadData.z + 0.5);
-                scene.add(roadGroup);
-                roadGrid.set(`${roadData.x}_${roadData.z}`, { mesh: roadGroup, roadType });
-            });
-            
-            // Rebuild buildings
-            if (data.buildings && Array.isArray(data.buildings)) {
-                
-                // Filter and sanitize building data
-                const sanitizedBuildings = data.buildings
-                    .map(buildingData => sanitizeBuildingData(buildingData))
-                    .filter(building => building !== null);
-                
-                
-                sanitizedBuildings.forEach((buildingData, index) => {
-                    const building = placeBuilding(buildingData.type, buildingData.x, buildingData.z, buildingData.rotation, true);
-                    if (building) {
-                        if (building.type === 'residential' || building.type === 'commercial') {
-                        }
-                    } else {
-                        console.error(`[DEBUG] Failed to place ${buildingData.type} building at ${buildingData.x},${buildingData.z}`);
-                    }
-                });
-                
-                
-                // Ensure all buildings are visible with proper materials
-                ensureBuildingVisibility();
-            } else {
-                console.error('[DEBUG] No buildings data or invalid format:', data.buildings);
-            }
-            
-            // Update UI
-            document.getElementById('population-display').textContent = `Population: ${Math.floor(population)}`;
-            
-            // Store current city information
-            CityBuilder.game.currentCityId = saveId;
-            CityBuilder.game.currentCityName = data.cityName || 'Unnamed City';
-            CityBuilder.game.currentCityDescription = data.cityDescription || '';
-            
-            // Restore auto-save preference if it exists in the save data
-            if (data.autoSaveEnabled !== undefined) {
-                autoSaveCheckbox.checked = data.autoSaveEnabled;
-                if (data.autoSaveEnabled) {
-                    CityBuilder.game.startAutoSave();
-                } else {
-                    CityBuilder.game.stopAutoSave();
+        sanitizedBuildings.forEach((buildingData, index) => {
+            const building = placeBuilding(buildingData.type, buildingData.x, buildingData.z, buildingData.rotation, true);
+            if (building) {
+                if (building.type === 'residential' || building.type === 'commercial') {
                 }
+            } else {
+                console.error(`[DEBUG] Failed to place ${buildingData.type} building at ${buildingData.x},${buildingData.z}`);
             }
-            
-            // Reset camera position to ensure buildings are visible
-            // Find the center of the city based on buildings
-            if (data.buildings && data.buildings.length > 0) {
-                let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
-                
-                data.buildings.forEach(building => {
-                    minX = Math.min(minX, building.x);
-                    maxX = Math.max(maxX, building.x);
-                    minZ = Math.min(minZ, building.z);
-                    maxZ = Math.max(maxZ, building.z);
-                });
-                
-                // Calculate center and size of city
-                const centerX = (minX + maxX) / 2;
-                const centerZ = (minZ + maxZ) / 2;
-                const sizeX = Math.max(10, maxX - minX + 10); // Add padding
-                const sizeZ = Math.max(10, maxZ - minZ + 10); // Add padding
-                
-                // Position camera to view the entire city
-                const distance = Math.max(sizeX, sizeZ) * 1.5;
-                camera.position.set(centerX + distance, distance, centerZ + distance);
-                camera.lookAt(centerX, 0, centerZ);
-            }
-            
-            // Force a scene update
-            renderer.render(scene, camera);
-            
-            // Hide loading spinner
-            loadingSpinner.classList.add('hidden');
-            
-            console.log(`Game loaded successfully from ${data.timestamp}`);
-            
-            // Show load notification with city name if available
-            showNotification(`City "${CityBuilder.game.currentCityName}" loaded successfully`);
+        });
         
-            return true;
-        } catch (error) {
-            console.error('Error loading game state:', error);
-            
-            // Hide loading spinner
-            loadingSpinner.classList.add('hidden');
-            
-            // Show error notification
-            showNotification('Error loading city');
-            
-            return false;
-        }
-    }, 100); // Small delay to ensure UI updates
+        // Ensure all buildings are visible with proper materials
+        ensureBuildingVisibility();
+    } else {
+        console.error('[DEBUG] No buildings data or invalid format:', data.buildings);
+    }
+    
+    // Update UI
+    document.getElementById('population-display').textContent = `Population: ${Math.floor(population)}`;
+    
+    // Reset camera position to ensure buildings are visible
+    // Find the center of the city based on buildings
+    if (data.buildings && data.buildings.length > 0) {
+        let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
+        
+        data.buildings.forEach(building => {
+            minX = Math.min(minX, building.x);
+            maxX = Math.max(maxX, building.x);
+            minZ = Math.min(minZ, building.z);
+            maxZ = Math.max(maxZ, building.z);
+        });
+        
+        // Calculate center and size of city
+        const centerX = (minX + maxX) / 2;
+        const centerZ = (minZ + maxZ) / 2;
+        const sizeX = Math.max(10, maxX - minX + 10); // Add padding
+        const sizeZ = Math.max(10, maxZ - minZ + 10); // Add padding
+        
+        // Position camera to view the entire city
+        const distance = Math.max(sizeX, sizeZ) * 1.5;
+        camera.position.set(centerX + distance, distance, centerZ + distance);
+        camera.lookAt(centerX, 0, centerZ);
+    }
+    
+    // Force a scene update
+    renderer.render(scene, camera);
 };
 
 // Create a new city (clear everything)
@@ -466,73 +332,16 @@ CityBuilder.game.createNewCity = function() {
     console.log('Created new city');
 };
 
-// Function to save the game with a new name and description
+// Function to save the game with a new name and description - wrapper for storage module
 CityBuilder.game.saveAsGameState = function() {
-    // Show loading spinner
-    loadingSpinner.classList.remove('hidden');
+    const gameStats = {
+        numResidential,
+        numCommercial,
+        numIndustrial,
+        population
+    };
     
-    setTimeout(() => {
-        // Save buildings
-        const buildingsData = [];
-        cityGrid.forEach((building, key) => {
-            const [x, z] = key.split('_').map(Number);
-            buildingsData.push({
-                x,
-                z,
-                type: building.type,
-                rotation: building.rotation
-            });
-        });
-
-        // Save roads
-        const roadsData = [];
-        roadGrid.forEach((roadInfo, key) => {
-            const [x, z] = key.split('_').map(Number);
-            roadsData.push({
-                x,
-                z,
-                roadType: roadInfo.roadType
-            });
-        });
-
-        // Save game stats
-        const gameStats = {
-            numResidential,
-            numCommercial,
-            numIndustrial,
-            population
-        };
-
-        // Create save data object
-        const saveData = {
-            buildings: buildingsData,
-            roads: roadsData,
-            stats: gameStats,
-            timestamp: new Date().toISOString()
-        };
-
-        // Generate a new save ID for the "Save As" operation
-        const saveId = generateSaveId();
-        
-        // Store pending save data
-        CityBuilder.game.pendingSaveData = saveData;
-        CityBuilder.game.pendingSaveId = saveId;
-        
-        // Hide loading spinner
-        loadingSpinner.classList.add('hidden');
-        
-        // Pre-fill the form with current values if available
-        if (CityBuilder.game.currentCityName) {
-            cityNameInput.value = CityBuilder.game.currentCityName;
-            cityDescriptionInput.value = CityBuilder.game.currentCityDescription || '';
-        } else {
-            cityNameInput.value = 'My Awesome City';
-            cityDescriptionInput.value = '';
-        }
-        
-        // Show city info form to get name and description
-        CityBuilder.ui.showCityInfoForm();
-    }, 100); // Small delay to ensure UI updates
+    CityBuilder.storage.saveAsGameState(cityGrid, roadGrid, gameStats);
 };
 
 // Function for completing the save process with city info
@@ -548,10 +357,6 @@ CityBuilder.game.completeSaveWithCityInfo = function() {
 const AUTO_SAVE_INTERVAL = 60000; // 1 minute
 let autoSaveTimer;
 
-// Default city name and description for auto-saves
-let defaultCityName = 'Auto-saved City';
-let defaultCityDescription = 'This city was automatically saved.';
-
 // Flag to track if changes have been made since last save
 CityBuilder.game.hasUnsavedChanges = false;
 
@@ -559,7 +364,14 @@ CityBuilder.game.startAutoSave = function() {
     autoSaveTimer = setInterval(() => {
         if (autoSaveCheckbox.checked && CityBuilder.game.hasUnsavedChanges) {
             // Auto-save without showing the form
-            autoSaveGameState();
+            const gameStats = {
+                numResidential,
+                numCommercial,
+                numIndustrial,
+                population
+            };
+            
+            CityBuilder.storage.autoSaveGameState(cityGrid, roadGrid, gameStats);
             // Reset the flag after saving
             CityBuilder.game.hasUnsavedChanges = false;
         }
@@ -569,64 +381,6 @@ CityBuilder.game.startAutoSave = function() {
 CityBuilder.game.stopAutoSave = function() {
     clearInterval(autoSaveTimer);
 };
-
-// Function for auto-saving without showing the form
-function autoSaveGameState() {
-    // Save buildings
-    const buildingsData = [];
-    cityGrid.forEach((building, key) => {
-        const [x, z] = key.split('_').map(Number);
-        buildingsData.push({
-            x,
-            z,
-            type: building.type,
-            rotation: building.rotation
-        });
-    });
-
-    // Save roads
-    const roadsData = [];
-    roadGrid.forEach((roadInfo, key) => {
-        const [x, z] = key.split('_').map(Number);
-        roadsData.push({
-            x,
-            z,
-            roadType: roadInfo.roadType
-        });
-    });
-
-    // Save game stats
-    const gameStats = {
-        numResidential,
-        numCommercial,
-        numIndustrial,
-        population
-    };
-
-    // Create save data object with city name and description
-    const saveData = {
-        buildings: buildingsData,
-        roads: roadsData,
-        stats: gameStats,
-        timestamp: new Date().toISOString(),
-        cityName: CityBuilder.game.currentCityName || defaultCityName,
-        cityDescription: CityBuilder.game.currentCityDescription || defaultCityDescription
-    };
-
-    // Generate save ID
-    const saveId = generateSaveId();
-    
-    // Save to localStorage
-    localStorage.setItem(saveId, JSON.stringify(saveData));
-    
-    // Update auto-save ID to the most recent save
-    localStorage.setItem('simcity_autosave_id', saveId);
-    
-    // Show save notification
-    showNotification(`Auto-saved: ${new Date().toLocaleTimeString()}`);
-    
-    console.log('Game auto-saved with ID:', saveId);
-}
 
 // Start auto-save on game load
 CityBuilder.game.startAutoSave();
