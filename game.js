@@ -15,11 +15,14 @@ function showNotification(message, duration = 2000) {
 
 // Undo history stack
 const undoStack = [];
+const redoStack = [];
 const MAX_UNDO_HISTORY = 50; // Maximum number of actions to remember
 
 // Function to add an action to the undo stack
 function addToUndoStack(action) {
     undoStack.push(action);
+    // Clear redo stack when new action is performed
+    redoStack.length = 0;
     // Limit the size of the undo stack to prevent memory issues
     if (undoStack.length > MAX_UNDO_HISTORY) {
         undoStack.shift(); // Remove oldest item
@@ -37,6 +40,8 @@ function undoLastAction() {
     }
     
     const lastAction = undoStack.pop();
+    // Add the action to redo stack
+    redoStack.push(lastAction);
     console.log('Undoing action:', lastAction.type);
     
     switch (lastAction.type) {
@@ -74,6 +79,41 @@ function undoLastAction() {
     
     // Show notification
     showNotification('Action Undone');
+}
+
+// Function to redo the last undone action
+function redoLastAction() {
+    if (redoStack.length === 0) {
+        console.log('Nothing to redo');
+        // Show notification
+        showNotification('Nothing to redo');
+        return;
+    }
+    
+    const lastAction = redoStack.pop();
+    // Add the action back to undo stack
+    undoStack.push(lastAction);
+    console.log('Redoing action:', lastAction.type);
+    
+    switch (lastAction.type) {
+        case 'place_building':
+            // Place the building back
+            placeBuilding(lastAction.buildingType, lastAction.x, lastAction.z, lastAction.rotation, true);
+            break;
+            
+        case 'place_road':
+            // Place the road back
+            placeRoad(lastAction.x, lastAction.z, true);
+            break;
+            
+        case 'bulldoze':
+            // Bulldoze again
+            bulldoze(lastAction.x, lastAction.z, true);
+            break;
+    }
+    
+    // Show notification
+    showNotification('Action Redone');
 }
 
 const renderer = new THREE.WebGLRenderer();
@@ -827,9 +867,16 @@ window.addEventListener('keydown', (event) => {
     const key = event.key.toLowerCase();
     
     // Handle undo with Command+Z (Mac) or Ctrl+Z (Windows)
-    if ((event.metaKey || event.ctrlKey) && key === 'z') {
+    if ((event.metaKey || event.ctrlKey) && !event.shiftKey && key === 'z') {
         event.preventDefault(); // Prevent browser's default undo
         undoLastAction();
+        return;
+    }
+    
+    // Handle redo with Command+Shift+Z (Mac) or Ctrl+Shift+Z (Windows)
+    if ((event.metaKey || event.ctrlKey) && event.shiftKey && key === 'z') {
+        event.preventDefault(); // Prevent browser's default redo
+        redoLastAction();
         return;
     }
     
